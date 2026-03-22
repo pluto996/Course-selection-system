@@ -83,52 +83,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function toggleNotif(id, el) {
-  const content = document.getElementById('content-' + id);
-  const preview = document.getElementById('preview-' + id);
-  const isOpen = content.style.display !== 'none';
-  content.style.display = isOpen ? 'none' : 'block';
-  preview.style.display = isOpen ? 'block' : 'none';
-
-  // 标记已读
-  const dot = el.querySelector('.notification-dot');
-  if (dot) {
-    fetch(`/teacher/notifications/${id}/read`, { method: 'POST' })
-      .then(r => r.json())
-      .then(() => {
-        dot.remove();
-        el.classList.remove('bg-light');
-        el.querySelector('.fw-semibold').classList.remove('text-primary');
-      });
-  }
-}
-
-function markAllRead() {
-  fetch('/teacher/notifications/read-all', { method: 'POST' })
-    .then(r => r.json())
-    .then(data => {
-      showToast(data.message, 'success');
-      document.querySelectorAll('.notification-dot').forEach(d => d.remove());
-      document.querySelectorAll('.notif-item').forEach(el => {
-        el.classList.remove('bg-light');
-        el.querySelector('.fw-semibold')?.classList.remove('text-primary');
-      });
-    });
-}
-
-function deleteNotif(id) {
-  fetch(`/teacher/notifications/${id}`, { method: 'DELETE' })
-    .then(r => r.json())
-    .then(data => {
-      if (data.code === 0) {
-        const el = document.getElementById('notif-' + id);
-        el.style.transition = 'opacity .3s';
-        el.style.opacity = '0';
-        setTimeout(() => el.remove(), 300);
-        showToast('已删除', 'success');
-      }
-    });
-}
-</script>
+<script>const BASE_URL = '/teacher';</script>
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 {% endblock %}

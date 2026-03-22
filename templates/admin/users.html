@@ -85,7 +85,7 @@
                 {{ {'admin':'管理员','teacher':'教师','student':'学生'}[user.role] }}
               </span>
             </td>
-            <td>{{ user.teacher.name if user.teacher else '-' }}</td>
+            <td>{{ user.instructor.instructor_id if user.instructor else '-' }}</td>
             <td>
               <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}"
                     id="status-badge-{{ user.id }}">
@@ -103,8 +103,8 @@
                      id="toggle-icon-{{ user.id }}"></i>
                 </button>
                 <button class="btn btn-icon btn-outline-info btn-sm"
-                        onclick="resetPassword({{ user.id }}, '{{ user.username }}')"
-                        title="重置密码">
+                        onclick="openChangePwd({{ user.id }}, '{{ user.username }}')"
+                        title="修改密码">
                   <i class="bi bi-key"></i>
                 </button>
                 <button class="btn btn-icon btn-outline-danger btn-sm"
@@ -191,7 +191,7 @@
             <select class="form-select" name="teacher_id">
               <option value="">-- 不关联 --</option>
               {% for t in teachers %}
-              <option value="{{ t.id }}">{{ t.name }}</option>
+              <option value="{{ t.instructor_id }}">{{ t.instructor_id }}</option>
               {% endfor %}
             </select>
           </div>
@@ -205,26 +205,34 @@
   </div>
 </div>
 
-<!-- 重置密码结果 Modal -->
-<div class="modal fade" id="resetPwdModal" tabindex="-1">
+<!-- 修改密码 Modal -->
+<div class="modal fade" id="changePwdModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-key me-2 text-warning"></i>密码已重置</h5>
+        <h5 class="modal-title"><i class="bi bi-key me-2 text-info"></i>修改密码 - <span id="changePwdUsername"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body text-center">
-        <p class="mb-2">用户 <strong id="resetPwdUsername"></strong> 的新密码为：</p>
-        <div class="d-flex align-items-center justify-content-center gap-2">
-          <code class="fs-4 bg-light px-3 py-2 rounded" id="resetPwdValue"></code>
-          <button class="btn btn-sm btn-outline-secondary" onclick="copyPwd()">
-            <i class="bi bi-clipboard"></i>
-          </button>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">新密码 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" id="adminNewPwd" placeholder="长度至少8位，含字母和数字">
+          <div class="mt-1">
+            <div style="height:4px;border-radius:2px;background:#dee2e6">
+              <div id="adminPwdBar" style="height:100%;border-radius:2px;width:0;transition:all .3s"></div>
+            </div>
+            <small id="adminPwdText" class="text-muted"></small>
+          </div>
         </div>
-        <p class="text-muted small mt-2">用户下次登录时将被要求修改密码</p>
+        <div class="mb-1">
+          <label class="form-label fw-semibold">确认新密码 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" id="adminConfirmPwd">
+          <div class="invalid-feedback">两次密码不一致</div>
+        </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">已记录，关闭</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="submitChangePwd()">确认修改</button>
       </div>
     </div>
   </div>
@@ -232,85 +240,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// 角色切换显示教师选择
-document.getElementById('roleSelect').addEventListener('change', function() {
-  document.getElementById('teacherSelectGroup').style.display = this.value === 'teacher' ? '' : 'none';
-});
-
-// 密码强度
-document.getElementById('newPassword').addEventListener('input', function() {
-  const v = this.value;
-  let score = 0;
-  if (v.length >= 8) score++;
-  if (/[a-zA-Z]/.test(v)) score++;
-  if (/\d/.test(v)) score++;
-  if (/[^a-zA-Z0-9]/.test(v)) score++;
-  const colors = ['#dc3545','#fd7e14','#0dcaf0','#198754'];
-  const labels = ['弱','中','强','很强'];
-  const fill = document.getElementById('pwdStrengthFill');
-  fill.style.width = (score * 25) + '%';
-  fill.style.background = colors[score-1] || '#dee2e6';
-  document.getElementById('pwdStrengthText').textContent = score > 0 ? '强度：' + labels[score-1] : '';
-});
-
-// 停用/启用用户
-function toggleUser(userId, username) {
-  confirmAction(`确定要切换用户 "${username}" 的状态吗？`, function() {
-    fetch(`/admin/users/${userId}/toggle`, { method: 'POST' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.code === 0) {
-          const badge = document.getElementById('status-badge-' + userId);
-          const icon = document.getElementById('toggle-icon-' + userId);
-          badge.textContent = data.is_active ? '启用' : '停用';
-          badge.className = 'badge ' + (data.is_active ? 'bg-success' : 'bg-secondary');
-          icon.className = 'bi bi-' + (data.is_active ? 'pause-circle' : 'play-circle');
-          showToast(data.message, 'success');
-        } else {
-          showToast(data.message, 'danger');
-        }
-      });
-  });
-}
-
-// 重置密码
-function resetPassword(userId, username) {
-  confirmAction(`确定要重置用户 "${username}" 的密码吗？`, function() {
-    fetch(`/admin/users/${userId}/reset-password`, { method: 'POST' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.code === 0) {
-          document.getElementById('resetPwdUsername').textContent = username;
-          document.getElementById('resetPwdValue').textContent = data.password;
-          new bootstrap.Modal(document.getElementById('resetPwdModal')).show();
-        } else {
-          showToast(data.message, 'danger');
-        }
-      });
-  });
-}
-
-// 删除用户
-function deleteUser(userId, username) {
-  confirmAction(`确定要永久删除用户 "${username}" 吗？此操作不可撤销。`, function() {
-    fetch(`/admin/users/${userId}/delete`, { method: 'POST' })
-      .then(r => r.json())
-      .then(data => {
-        if (data.code === 0) {
-          showToast(data.message, 'success');
-          document.getElementById('user-row-' + userId)?.remove();
-        } else {
-          showToast(data.message, 'danger');
-        }
-      });
-  }, '确认删除用户');
-}
-
-// 复制密码
-function copyPwd() {
-  const pwd = document.getElementById('resetPwdValue').textContent;
-  navigator.clipboard.writeText(pwd).then(() => showToast('已复制到剪贴板', 'success'));
-}
-</script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
 {% endblock %}

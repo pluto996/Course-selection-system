@@ -1,13 +1,11 @@
-import datetime
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from models import db, Teacher, Course, Notification, LoginRecord
+from models import db, Instructor, ClassRecord, Notification, AuditLog
 from decorators import teacher_required
 
 teacher_bp = Blueprint('teacher', __name__)
 
 DAY_MAP = {'0100000': '周一', '0010000': '周二', '0001000': '周三', '0000100': '周四', '0000010': '周五'}
-DAY_ORDER = {'0100000': 1, '0010000': 2, '0001000': 3, '0000100': 4, '0000010': 5}
 
 
 @teacher_bp.context_processor
@@ -16,10 +14,10 @@ def inject_unread():
 
 
 def _get_teacher_record():
-    """获取当前用户关联的 Teacher 记录"""
-    if current_user.teacher_id:
-        return Teacher.query.get(current_user.teacher_id)
-    return Teacher.query.filter_by(name=current_user.display_name or current_user.username).first()
+    """获取当前用户关联的 Instructor 记录"""
+    if current_user.instructor_id:
+        return Instructor.query.get(current_user.instructor_id)
+    return Instructor.query.filter_by(instructor_id=current_user.display_name or current_user.username).first()
 
 
 # ── 仪表盘 ────────────────────────────────────────────────────
@@ -32,7 +30,7 @@ def dashboard():
     schedule_count = 0
     if teacher:
         result = scheduler.get_result()
-        schedule_count = sum(1 for item in result if teacher.name in item['teacher'])
+        schedule_count = sum(1 for item in result if teacher.instructor_id in item['teacher'])
     unread = Notification.unread_count(current_user.id)
     recent_notifs = Notification.query.filter_by(
         recipient_id=current_user.id
@@ -56,8 +54,8 @@ def calendar():
     if teacher:
         result = scheduler.get_result()
         for item in result:
-            # match by teacher name substring
-            if teacher.name not in item['teacher']:
+            # match by instructor_id
+            if teacher.instructor_id not in item['teacher']:
                 continue
             day = item['day']
             section = item['section']
@@ -96,8 +94,10 @@ def profile():
         return jsonify({'code': 0, 'message': '保存成功'})
 
     teacher = _get_teacher_record()
-    total_courses = len(teacher.courses) if teacher else 0
-    recent_logins = LoginRecord.query.filter_by(user_id=current_user.id).limit(10).all()
+    total_courses = ClassRecord.query.filter_by(instructor_id=teacher.instructor_id).count() if teacher else 0
+    recent_logins = AuditLog.query.filter_by(
+        user_id=current_user.id, action_type='LOGIN'
+    ).order_by(AuditLog.created_at.desc()).limit(10).all()
     return render_template('teacher/profile.html',
                            teacher=teacher,
                            total_courses=total_courses,

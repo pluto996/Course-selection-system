@@ -1,7 +1,7 @@
 import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
-from models import db, User, LoginRecord
+from models import db, User
 from utils.audit import log_action, LOGIN, LOGOUT, PASSWORD_CHANGE
 
 auth_bp = Blueprint('auth', __name__)
@@ -29,20 +29,9 @@ def login():
         user = User.query.filter_by(username=username).first()
         success = user is not None and user.check_password(password) and user.is_active
 
-        # 记录登录记录
-        if user:
-            record = LoginRecord(
-                user_id=user.id,
-                ip_address=request.remote_addr,
-                success=success
-            )
-            db.session.add(record)
-            db.session.commit()
-
         if success:
             login_user(user, remember=False)
-            session['last_active'] = datetime.datetime.utcnow().isoformat()
-            log_action(LOGIN, 'success', f'用户 {username} 登录成功')
+            log_action(LOGIN, 'success', f'IP: {request.remote_addr}', user_id=user.id)
 
             if user.must_change_password:
                 flash('首次登录请修改密码', 'warning')
@@ -54,7 +43,7 @@ def login():
             return _redirect_by_role(user)
         else:
             if user:
-                log_action(LOGIN, 'failure', f'用户 {username} 登录失败', operator=username)
+                log_action(LOGIN, 'failure', f'用户名: {username}', operator=username)
             flash('用户名或密码错误', 'danger')
 
     return render_template('auth/login.html')
@@ -85,10 +74,6 @@ def change_password():
 
         if new_password != confirm_password:
             flash('两次输入的新密码不一致', 'danger')
-            return render_template('auth/change_password.html')
-
-        if not User.validate_password_policy(new_password):
-            flash('新密码不符合要求：长度至少8位，且包含字母和数字', 'danger')
             return render_template('auth/change_password.html')
 
         if not User.validate_password_policy(new_password):

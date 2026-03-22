@@ -3,11 +3,11 @@ import threading
 import json
 import datetime
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, session
-from flask_login import login_required, logout_user, current_user
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from algorithm.genetic_scheduler import GeneticScheduler, XMLBasedScheduler
-from models import db, Teacher, Room, Course, SystemConfig
+from algorithm.genetic_scheduler import GeneticScheduler
+from models import db, Instructor, Room, ClassRecord, StudentRecord, StudentRequest, Preference, SystemConfig, ScheduleConstraint
 from extensions import login_manager, bcrypt, limiter
 
 app = Flask(__name__)
@@ -43,20 +43,6 @@ DAY_NAMES_MAP = {
 SECTIONS = [{'id': i, 'label': f'第{i}节'} for i in range(1, 9)]
 
 
-# ── Session 超时检测 ──────────────────────────────────────────
-@app.before_request
-def check_session_timeout():
-    if current_user.is_authenticated:
-        last_active = session.get('last_active')
-        if last_active:
-            elapsed = (datetime.datetime.utcnow() - datetime.datetime.fromisoformat(last_active)).total_seconds()
-            if elapsed > 7200:  # 120 分钟
-                logout_user()
-                session.clear()
-                return redirect(url_for('auth.login'))
-        session['last_active'] = datetime.datetime.utcnow().isoformat()
-
-
 # ── 注册 Blueprint ────────────────────────────────────────────
 from blueprints.auth import auth_bp
 from blueprints.admin import admin_bp
@@ -76,63 +62,45 @@ app.register_blueprint(api_bp, url_prefix='/api')
 def unauthorized(e):
     return redirect(url_for('auth.login', next=request.url))
 
-
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template('errors/403.html'), 403
-
+    return render_template('errors/error.html', code=403, message='权限不足', detail='您没有访问此页面的权限'), 403
 
 @app.errorhandler(404)
 def not_found(e):
-    return render_template('errors/404.html'), 404
-
+    return render_template('errors/error.html', code=404, message='页面不存在', detail='您访问的页面不存在或已被移除'), 404
 
 @app.errorhandler(429)
 def too_many_requests(e):
     return render_template('auth/login.html', lock_message='登录尝试过于频繁，请 15 分钟后重试'), 429
 
-
 @app.errorhandler(500)
 def internal_error(e):
     db.session.rollback()
-    return render_template('errors/500.html'), 500
+    return render_template('errors/error.html', code=500, message='服务器错误', detail='请稍后重试或联系管理员'), 500
 
 
 # ── 数据库初始化 ──────────────────────────────────────────────
 def init_db_data():
-    """应用启动时从数据库加载数据到调度器内存，并恢复上次排课结果"""
+    """应用启动时建表、创建管理员、恢复上次排课结果"""
     with app.app_context():
         db.create_all()
         _create_default_admin()
 
-        if Course.query.first():
-            print("从数据库加载排课数据...")
-            data = {'slots_per_day': 288, 'classrooms': [], 'courses': []}
-            config = SystemConfig.query.get('slotsPerDay')
-            if config:
-                data['slots_per_day'] = int(config.value)
-            for r in Room.query.all():
-                data['classrooms'].append({'id': r.id, 'capacity': r.capacity})
-            for c in Course.query.all():
-                data['courses'].append({
-                    'id': c.id,
-                    'limit': c.class_limit,
-                    'instructors': [t.name for t in c.instructors],
-                    'possible_times': json.loads(c.possible_times_json) if c.possible_times_json else [],
-                    'possible_rooms': json.loads(c.possible_rooms_json) if c.possible_rooms_json else []
-                })
-            scheduler.load_from_memory(data)
-
-            # 恢复上次排课结果
-            saved_result = SystemConfig.query.get('schedule_result')
-            if saved_result:
+        # 恢复上次排课结果
+        saved_result = SystemConfig.query.get('schedule_result')
+        if saved_result:
+            try:
                 scheduler.result = json.loads(saved_result.value)
                 scheduler.progress['status'] = 'COMPLETED'
                 print(f"已恢复排课结果，共 {len(scheduler.result)} 条记录。")
+            except Exception as e:
+                print(f"恢复排课结果失败：{e}")
 
-            # 恢复收敛历史
-            saved_conv = SystemConfig.query.get('convergence_data')
-            if saved_conv:
+        # 恢复收敛历史
+        saved_conv = SystemConfig.query.get('convergence_data')
+        if saved_conv:
+            try:
                 conv = json.loads(saved_conv.value)
                 gens = conv.get('generations', [])
                 scheduler.progress['history'] = [
@@ -141,9 +109,38 @@ def init_db_data():
                      'f3': conv['f3'][i] if 'f3' in conv else 0}
                     for i, g in enumerate(gens)
                 ]
-            print("数据加载完成。")
-        else:
-            print("数据库中暂无排课数据。")
+            except Exception as e:
+                print(f"恢复收敛历史失败：{e}")
+
+        # 从数据库加载课程数据到调度器（7 表结构）
+        try:
+            rooms = Room.query.all()
+            classes = ClassRecord.query.all()
+            if rooms and classes:
+                # 构建偏好字典
+                prefs = {}
+                for p in Preference.query.all():
+                    prefs.setdefault(p.class_id, []).append((p.target_val, p.pref_score))
+
+                # 构建学生选课字典（只取 CLASS 类型）
+                student_reqs = {}
+                for req in StudentRequest.query.filter_by(request_type='CLASS').all():
+                    student_reqs.setdefault(req.student_id, []).append(req.target_id)
+
+                data = {
+                    'rooms': [{'room_id': r.room_id, 'capacity': r.capacity,
+                                'availability_pattern': r.availability_pattern} for r in rooms],
+                    'classes': [(c.class_id, c.class_limit, c.instructor_id, c.offering_id)
+                                for c in classes],
+                    'prefs': prefs,
+                    'student_reqs': student_reqs
+                }
+                scheduler.load_from_memory(data)
+                print(f"从数据库加载完成：{len(rooms)} 间教室，{len(classes)} 门课程。")
+            else:
+                print("数据库中暂无排课数据，请运行 import_xml.py 导入。")
+        except Exception as e:
+            print(f"加载排课数据失败：{e}")
 
 
 def _create_default_admin():
@@ -151,16 +148,15 @@ def _create_default_admin():
     from models import User
     if User.query.first() is None:
         admin = User(username='admin', role='admin', display_name='系统管理员')
-        admin.set_password('Admin123')
+        admin.set_password('123456')
         db.session.add(admin)
         db.session.commit()
-        print("已创建默认管理员账号：admin / Admin123")
+        print("已创建默认管理员账号：admin / 123456")
 
 
 init_db_data()
 
 
-# ── 原有路由（保留，加权限守卫）────────────────────────────────
 @app.route('/')
 def index():
     if current_user.is_authenticated:
@@ -202,11 +198,9 @@ def generate_page():
     return render_template('generate.html', page='generate')
 
 
-# ── 原有 API（保留，加权限守卫）──────────────────────────────
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_file():
-    from decorators import role_required
     from utils.audit import log_action, XML_IMPORT
     if current_user.role != 'admin':
         return jsonify({'error': '权限不足'}), 403
@@ -222,42 +216,40 @@ def upload_file():
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(save_path)
         try:
-            parsed_data = XMLBasedScheduler.parse_xml_to_dict(save_path)
-            db.session.query(Course).delete()
-            db.session.query(Room).delete()
-            db.session.query(Teacher).delete()
-            db.session.execute(db.text("DELETE FROM course_teacher"))
+            from import_xml import parse_xml, import_to_db
+            data = parse_xml(save_path)
+
+            # 清空旧排课数据
+            from models import StudentRequest, StudentRecord, Preference, ScheduleConstraint, ClassRecord, Instructor
+            StudentRequest.query.delete()
+            StudentRecord.query.delete()
+            Preference.query.delete()
+            ScheduleConstraint.query.delete()
+            ClassRecord.query.delete()
+            Instructor.query.delete()
+            Room.query.delete()
             db.session.commit()
 
-            conf = SystemConfig.query.get('slotsPerDay')
-            if not conf:
-                conf = SystemConfig(key='slotsPerDay')
-            conf.value = str(parsed_data['slots_per_day'])
-            db.session.add(conf)
+            import_to_db(data, clear=False)
 
-            for r in parsed_data['classrooms']:
-                db.session.add(Room(id=r['id'], capacity=r['capacity']))
+            # 重新加载到调度器
+            rooms = Room.query.all()
+            classes = ClassRecord.query.all()
+            prefs = {}
+            for p in Preference.query.all():
+                prefs.setdefault(p.class_id, []).append((p.target_val, p.pref_score))
+            student_reqs = {}
+            for req in StudentRequest.query.filter_by(request_type='CLASS').all():
+                student_reqs.setdefault(req.student_id, []).append(req.target_id)
 
-            teacher_cache = {}
-            for c in parsed_data['courses']:
-                course_obj = Course(
-                    id=c['id'],
-                    class_limit=c['limit'],
-                    possible_times_json=json.dumps(c['possible_times']),
-                    possible_rooms_json=json.dumps(c['possible_rooms'])
-                )
-                for t_name in c['instructors']:
-                    if t_name not in teacher_cache:
-                        t_obj = Teacher.query.filter_by(name=t_name).first()
-                        if not t_obj:
-                            t_obj = Teacher(name=t_name)
-                            db.session.add(t_obj)
-                        teacher_cache[t_name] = t_obj
-                    course_obj.instructors.append(teacher_cache[t_name])
-                db.session.add(course_obj)
-
-            db.session.commit()
-            scheduler.load_from_memory(parsed_data)
+            scheduler.load_from_memory({
+                'rooms': [{'room_id': r.room_id, 'capacity': r.capacity,
+                            'availability_pattern': r.availability_pattern} for r in rooms],
+                'classes': [(c.class_id, c.class_limit, c.instructor_id, c.offering_id)
+                            for c in classes],
+                'prefs': prefs,
+                'student_reqs': student_reqs
+            })
             log_action(XML_IMPORT, 'success', f'导入文件：{filename}')
             return jsonify({'message': '文件上传并更新数据库成功', 'filename': filename}), 200
         except Exception as e:
@@ -364,4 +356,5 @@ def export_schedule():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # 去掉 debug=True，添加 host='0.0.0.0'
+    app.run(host='0.0.0.0', port=10000)

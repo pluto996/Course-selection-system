@@ -1,7 +1,6 @@
-import datetime
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
-from models import db, Course, Teacher, Room, Notification, CourseApplication, CourseReview, LoginRecord
+from models import db, ClassRecord, Instructor, Room, Notification, CourseApplication, AuditLog
 from decorators import student_required
 
 student_bp = Blueprint('student', __name__)
@@ -25,8 +24,8 @@ def schedule():
     room_filter = request.args.get('room_id', '')
     day_filter = request.args.get('day', '')
 
-    teachers = Teacher.query.order_by(Teacher.name).all()
-    rooms = Room.query.order_by(Room.id).all()
+    teachers = Instructor.query.order_by(Instructor.instructor_id).all()
+    rooms = Room.query.order_by(Room.room_id).all()
 
     # 从调度器结果构建课表（day 是 '0100000' 格式，section 是 int）
     result = scheduler.get_result()
@@ -42,8 +41,7 @@ def schedule():
         if room_filter and item['room'] != room_filter:
             continue
         if teacher_filter:
-            teacher_names = [t.name for t in Teacher.query.filter_by(id=int(teacher_filter)).all()]
-            if not any(tn in item['teacher'] for tn in teacher_names):
+            if teacher_filter not in item['teacher']:
                 continue
 
         if day_label not in schedule_data:
@@ -76,8 +74,8 @@ def schedule():
 @student_required
 def apply():
     course_id = request.args.get('course_id', '')
-    courses = Course.query.all()
-    selected_course = Course.query.get(course_id) if course_id else None
+    courses = ClassRecord.query.all()
+    selected_course = ClassRecord.query.get(course_id) if course_id else None
 
     if request.method == 'POST':
         cid = request.form.get('course_id', '').strip()
@@ -116,75 +114,6 @@ def kanban():
     for app in apps:
         grouped[app.status].append(app)
     return render_template('student/kanban.html', grouped=grouped)
-
-
-# ── 课程评价 ──────────────────────────────────────────────────
-@student_bp.route('/review', methods=['GET', 'POST'])
-@login_required
-@student_required
-def review():
-    course_id = request.args.get('course_id', '')
-    course = Course.query.get(course_id) if course_id else None
-
-    # 验证有 approved 申请
-    if course_id:
-        approved = CourseApplication.query.filter_by(
-            student_id=current_user.id, course_id=course_id, status='approved'
-        ).first()
-        if not approved:
-            return jsonify({'code': 1, 'message': '您没有该课程的已通过申请'}), 403
-
-    if request.method == 'POST':
-        cid = request.form.get('course_id', '').strip()
-        score_str = request.form.get('score', '')
-        content = request.form.get('content', '').strip()
-
-        if not cid or not score_str:
-            return jsonify({'code': 1, 'message': '请填写完整信息'})
-
-        try:
-            score = int(score_str)
-        except ValueError:
-            return jsonify({'code': 1, 'message': '评分格式错误'})
-
-        if score < 1 or score > 5:
-            return jsonify({'code': 1, 'message': '评分必须在1-5之间'})
-
-        # 检查重复评价
-        existing = CourseReview.query.filter_by(
-            student_id=current_user.id, course_id=cid
-        ).first()
-        if existing:
-            return jsonify({'code': 1, 'message': '您已评价过该课程'})
-
-        rev = CourseReview(
-            student_id=current_user.id,
-            course_id=cid,
-            score=score,
-            content=content
-        )
-        db.session.add(rev)
-        db.session.commit()
-        return jsonify({'code': 0, 'message': '评价已提交'})
-
-    # 历史评分分布
-    score_dist = {i: 0 for i in range(1, 6)}
-    if course_id:
-        reviews = CourseReview.query.filter_by(course_id=course_id).all()
-        for r in reviews:
-            score_dist[r.score] = score_dist.get(r.score, 0) + 1
-
-    already_reviewed = False
-    if course_id:
-        already_reviewed = CourseReview.query.filter_by(
-            student_id=current_user.id, course_id=course_id
-        ).first() is not None
-
-    return render_template('student/review.html',
-                           course=course,
-                           course_id=course_id,
-                           score_dist=score_dist,
-                           already_reviewed=already_reviewed)
 
 
 # ── 个人课表（CalendarView）────────────────────────────────────
@@ -290,7 +219,9 @@ def profile():
     pending_count = CourseApplication.query.filter_by(
         student_id=current_user.id, status='pending'
     ).count()
-    recent_logins = LoginRecord.query.filter_by(user_id=current_user.id).limit(10).all()
+    recent_logins = AuditLog.query.filter_by(
+        user_id=current_user.id, action_type='LOGIN'
+    ).order_by(AuditLog.created_at.desc()).limit(10).all()
 
     return render_template('student/profile.html',
                            approved_count=approved_count,

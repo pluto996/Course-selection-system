@@ -95,10 +95,10 @@
           <tbody>
             {% for rec in recent_logins %}
             <tr>
-              <td><small>{{ rec.logged_in_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+              <td><small>{{ rec.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
               <td><code class="small">{{ rec.ip_address or '-' }}</code></td>
               <td>
-                <span class="badge {% if rec.success %}bg-success{% else %}bg-danger{% endif %}">
+                <span class="badge {% if rec.result == 'success' %}bg-success{% else %}bg-danger{% endif %}">
                   {{ '成功' if rec.success else '失败' }}
                 </span>
               </td>
@@ -115,39 +115,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function saveDisplayName() {
-  const name = document.getElementById('displayNameInput').value.trim();
-  if (name.length < 2 || name.length > 50) {
-    showToast('显示名称长度需在2-50字符之间', 'warning');
-    return;
-  }
-  fetch('/admin/profile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display_name: name })
-  }).then(r => r.json()).then(data => {
-    showToast(data.message, data.code === 0 ? 'success' : 'danger');
-  });
-}
-
-document.getElementById('avatarInput').addEventListener('change', function() {
-  if (!this.files[0]) return;
-  const spinner = document.getElementById('avatarSpinner');
-  spinner.classList.remove('d-none');
-  const fd = new FormData();
-  fd.append('avatar', this.files[0]);
-  fetch('/admin/profile/avatar', { method: 'POST', body: fd })
-    .then(r => r.json())
-    .then(data => {
-      spinner.classList.add('d-none');
-      if (data.code === 0) {
-        showToast('头像上传成功', 'success');
-        setTimeout(() => location.reload(), 800);
-      } else {
-        showToast(data.message, 'danger');
-      }
-    });
-});
-</script>
+<script>const PROFILE_URL = '/admin/profile';</script>
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 {% endblock %}

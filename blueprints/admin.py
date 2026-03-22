@@ -1,11 +1,9 @@
 import csv
 import io
-import string
-import secrets
 import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import login_required, current_user
-from models import db, User, Teacher, Course, Room, AuditLog, Notification, CourseApplication, LoginRecord
+from models import db, User, Instructor, ClassRecord, Room, AuditLog, Notification, CourseApplication
 from decorators import admin_required
 from utils.audit import log_action, USER_CREATE, USER_DISABLE, USER_ENABLE, PASSWORD_RESET, NOTIFICATION_PUBLISH, APPLICATION_REVIEW
 
@@ -28,9 +26,9 @@ def inject_unread():
 @admin_required
 def dashboard():
     total_users = User.query.count()
-    total_courses = Course.query.count()
+    total_courses = ClassRecord.query.count()
     total_rooms = Room.query.count()
-    total_teachers = Teacher.query.count()
+    total_teachers = Instructor.query.count()
 
     return render_template('admin/dashboard.html',
                            total_users=total_users,
@@ -61,7 +59,6 @@ def schedule_result():
     }
     # 教室利用率：已分配教室数 / 总教室数
     total_rooms = len(set(item['room'] for item in schedule_data)) if schedule_data else 0
-    from models import Room
     all_rooms = Room.query.count()
     obj_values['room_util'] = round(total_rooms / all_rooms * 100, 1) if all_rooms else 0
 
@@ -95,7 +92,7 @@ def users():
         query = query.filter_by(_is_active=False)
 
     pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    teachers = Teacher.query.order_by(Teacher.name).all()
+    teachers = Instructor.query.order_by(Instructor.instructor_id).all()
     return render_template('admin/users.html', pagination=pagination, teachers=teachers,
                            role_filter=role_filter, status_filter=status_filter, per_page=per_page)
 
@@ -108,7 +105,7 @@ def create_user():
     password = request.form.get('password', '')
     role = request.form.get('role', 'student')
     display_name = request.form.get('display_name', '').strip() or username
-    teacher_id = request.form.get('teacher_id', type=int)
+    instructor_id = request.form.get('teacher_id', '').strip()
 
     if not username or not password:
         flash('用户名和密码不能为空', 'danger')
@@ -124,8 +121,8 @@ def create_user():
 
     user = User(username=username, role=role, display_name=display_name)
     user.set_password(password)
-    if role == 'teacher' and teacher_id:
-        user.teacher_id = teacher_id
+    if role == 'teacher' and instructor_id:
+        user.instructor_id = instructor_id
     db.session.add(user)
     db.session.commit()
     log_action(USER_CREATE, 'success', f'创建用户：{username}（{role}）')
@@ -148,35 +145,36 @@ def toggle_user(user_id):
                     'message': f'用户已{"启用" if user.is_active else "停用"}'})
 
 
-@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/change-password', methods=['POST'])
 @login_required
 @admin_required
-def reset_password(user_id):
+def change_user_password(user_id):
     user = User.query.get_or_404(user_id)
-    alphabet = string.ascii_letters + string.digits
-    new_pwd = ''.join(secrets.choice(alphabet) for _ in range(12))
+    data = request.get_json() or {}
+    new_pwd = data.get('password', '').strip()
+    if not new_pwd:
+        return jsonify({'code': 1, 'message': '密码不能为空'})
+    if not User.validate_password_policy(new_pwd):
+        return jsonify({'code': 1, 'message': '密码需至少8位，且包含字母和数字'})
     user.set_password(new_pwd)
-    user.must_change_password = True
+    user.must_change_password = False
     db.session.commit()
-    log_action(PASSWORD_RESET, 'success', f'重置用户 {user.username} 的密码')
-    return jsonify({'code': 0, 'password': new_pwd, 'message': '密码已重置'})
+    log_action(PASSWORD_RESET, 'success', f'管理员修改了用户 {user.username} 的密码')
+    return jsonify({'code': 0, 'message': '密码已修改'})
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
 def delete_user(user_id):
-    from models import LoginRecord, CourseApplication, CourseReview, Notification
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
         return jsonify({'code': 1, 'message': '不能删除自己的账号'}), 400
     username = user.username
-    # 先删除所有关联子记录，避免外键/NOT NULL 约束错误
-    LoginRecord.query.filter_by(user_id=user_id).delete(synchronize_session=False)
     Notification.query.filter_by(recipient_id=user_id).delete(synchronize_session=False)
     CourseApplication.query.filter_by(student_id=user_id).delete(synchronize_session=False)
-    CourseReview.query.filter_by(student_id=user_id).delete(synchronize_session=False)
-    db.session.flush()  # 确保子记录先落地，再删主记录
+    AuditLog.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    db.session.flush()
     db.session.delete(user)
     db.session.commit()
     log_action(USER_DISABLE, 'success', f'删除用户：{username}')
@@ -353,7 +351,9 @@ def profile():
 
     total_users = User.query.count()
     total_logs = AuditLog.query.count()
-    recent_logins = LoginRecord.query.filter_by(user_id=current_user.id).limit(10).all()
+    recent_logins = AuditLog.query.filter_by(
+        user_id=current_user.id, action_type='LOGIN'
+    ).order_by(AuditLog.created_at.desc()).limit(10).all()
     return render_template('admin/profile.html',
                            total_users=total_users,
                            total_logs=total_logs,

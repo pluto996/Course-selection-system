@@ -3,7 +3,7 @@ import datetime
 from functools import wraps
 from flask import Blueprint, request, jsonify, g
 from flask_login import current_user, login_required
-from models import db, User, Notification, CourseApplication, CourseReview, Course, Teacher, Room, SystemConfig
+from models import db, User, Notification, CourseApplication, ClassRecord, Instructor, Room, SystemConfig
 
 api_bp = Blueprint('api', __name__)
 
@@ -161,75 +161,6 @@ def api_get_application(app_id):
     }, 'message': ''})
 
 
-# ── 课程评价 API ──────────────────────────────────────────────
-@api_bp.route('/reviews', methods=['POST'])
-@token_required
-def api_create_review():
-    if g.token_user.role != 'student':
-        return jsonify({'code': 1, 'message': '仅学生可提交评价'}), 403
-    data = request.get_json() or {}
-    course_id = data.get('course_id')
-    score = data.get('score')
-    content = data.get('content', '')
-
-    if not course_id:
-        return jsonify({'code': 1, 'error': '缺少参数 course_id'}), 400
-    if score is None:
-        return jsonify({'code': 1, 'error': '缺少参数 score'}), 400
-
-    try:
-        score = int(score)
-    except (ValueError, TypeError):
-        return jsonify({'code': 1, 'message': '评分格式错误'}), 400
-
-    if score < 1 or score > 5:
-        return jsonify({'code': 1, 'message': '评分必须在1-5之间'}), 400
-
-    existing = CourseReview.query.filter_by(student_id=g.token_user.id, course_id=course_id).first()
-    if existing:
-        return jsonify({'code': 1, 'message': '您已评价过该课程'}), 400
-
-    rev = CourseReview(student_id=g.token_user.id, course_id=course_id, score=score, content=content)
-    db.session.add(rev)
-    db.session.commit()
-    return jsonify({'code': 0, 'message': '评价已提交'})
-
-
-@api_bp.route('/viz/course/<course_id>/score_dist', methods=['GET'])
-def api_score_dist(course_id):
-    reviews = CourseReview.query.filter_by(course_id=course_id).all()
-    dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-    for r in reviews:
-        dist[r.score] = dist.get(r.score, 0) + 1
-    return jsonify({'code': 0, 'data': dist})
-
-
-def _parse_json_field(raw):
-    """安全解析 JSON 字段，返回列表"""
-    try:
-        return json.loads(raw) if raw else []
-    except (ValueError, TypeError):
-        return []
-
-
-def _extract_room_id(item):
-    """从 rooms_json 元素中提取字符串 room_id"""
-    if isinstance(item, str):
-        return item
-    if isinstance(item, dict):
-        return item.get('id') or item.get('room_id') or str(item)
-    return str(item)
-
-
-def _extract_time(t):
-    """从 times 元素中提取 (day, section)"""
-    if isinstance(t, dict):
-        return t.get('day', ''), t.get('section', 1)
-    if isinstance(t, str):
-        return t, 1
-    return None, None
-
-
 # ── 可视化数据 API ────────────────────────────────────────────
 @api_bp.route('/viz/convergence', methods=['GET'])
 @login_required
@@ -247,85 +178,63 @@ def api_viz_convergence():
 @api_bp.route('/viz/capacity', methods=['GET'])
 @login_required
 def api_viz_capacity():
+    from app import scheduler
     rooms = Room.query.all()
-    courses = Course.query.all()
-
-    # 统计每个教室的最大使用人数
+    # 从调度器结果统计每个教室的实际使用人数
+    result = scheduler.get_result()
     room_usage = {}
-    for course in courses:
-        rooms_json = _parse_json_field(course.possible_rooms_json)
-        for room_raw in rooms_json:
-            rid = _extract_room_id(room_raw)
-            if rid not in room_usage:
-                room_usage[rid] = 0
-            room_usage[rid] = max(room_usage[rid], course.class_limit)
+    for item in result:
+        rid = item['room']
+        room_usage[rid] = room_usage.get(rid, 0) + 1
 
-    result = []
+    out = []
     for room in rooms:
-        actual = room_usage.get(room.id, 0)
-        result.append({
-            'room_id': room.id,
+        actual = room_usage.get(room.room_id, 0)
+        out.append({
+            'room_id': room.room_id,
             'capacity': room.capacity,
             'actual': actual,
             'over_capacity': actual > room.capacity
         })
-    return jsonify(result)
+    return jsonify(out)
 
 
 @api_bp.route('/viz/heatmap', methods=['GET'])
 @login_required
 def api_viz_heatmap():
-    courses = Course.query.all()
+    from app import scheduler
     day_keys = ['0100000', '0010000', '0001000', '0000100', '0000010']
-    # 5天 × 8节次
     matrix = [[0] * 8 for _ in range(5)]
-
-    slot_count = {}
-    for course in courses:
-        times = _parse_json_field(course.possible_times_json)
-        rooms_json = _parse_json_field(course.possible_rooms_json)
-        room = _extract_room_id(rooms_json[0]) if rooms_json else 'unknown'
-        for t in times:
-            day, section = _extract_time(t)
-            if day is None:
-                continue
-            key = f'{day}:{room}:{section}'
-            slot_count[key] = slot_count.get(key, 0) + 1
-
-    for key, count in slot_count.items():
-        if count > 1:
-            parts = key.split(':')
-            day = parts[0]
-            section = int(parts[2]) if len(parts) > 2 else 1
-            if day in day_keys and 1 <= section <= 8:
-                di = day_keys.index(day)
-                matrix[di][section - 1] += count - 1
-
+    for item in scheduler.get_result():
+        day = item['day']
+        section = item['section']
+        if day in day_keys and 1 <= section <= 8:
+            matrix[day_keys.index(day)][section - 1] += 1
     return jsonify(matrix)
 
 
-@api_bp.route('/viz/teacher/<int:teacher_id>/radar', methods=['GET'])
+@api_bp.route('/viz/teacher/<teacher_id>/radar', methods=['GET'])
 @login_required
 def api_teacher_radar(teacher_id):
-    teacher = Teacher.query.get_or_404(teacher_id)
+    from app import scheduler
     day_keys = ['0100000', '0010000', '0001000', '0000100', '0000010']
     values = [0] * 5
-    for course in teacher.courses:
-        times = _parse_json_field(course.possible_times_json)
-        for t in times:
-            day, _ = _extract_time(t)
-            if day and day in day_keys:
+    for item in scheduler.get_result():
+        if teacher_id in item['teacher']:
+            day = item['day']
+            if day in day_keys:
                 values[day_keys.index(day)] += 1
     return jsonify({'code': 0, 'data': {'labels': ['周一', '周二', '周三', '周四', '周五'], 'values': values}})
 
 
-@api_bp.route('/viz/teacher/<int:teacher_id>/wordcloud', methods=['GET'])
+@api_bp.route('/viz/teacher/<teacher_id>/wordcloud', methods=['GET'])
 @login_required
 def api_teacher_wordcloud(teacher_id):
-    teacher = Teacher.query.get_or_404(teacher_id)
+    instructor = Instructor.query.get_or_404(teacher_id)
+    classes = ClassRecord.query.filter_by(instructor_id=instructor.instructor_id).all()
     word_freq = {}
-    for course in teacher.courses:
-        reviews = CourseReview.query.filter_by(course_id=course.id).all()
+    for c in classes:
+        reviews = CourseReview.query.filter_by(course_id=c.class_id).all()
         for r in reviews:
             for word in (r.content or '').split():
                 if len(word) >= 2:
@@ -337,17 +246,13 @@ def api_teacher_wordcloud(teacher_id):
 @api_bp.route('/viz/student/<int:student_id>/workload', methods=['GET'])
 @login_required
 def api_student_workload(student_id):
+    from app import scheduler
     apps = CourseApplication.query.filter_by(student_id=student_id, status='approved').all()
+    approved_ids = {a.course_id for a in apps}
     day_keys = ['0100000', '0010000', '0001000', '0000100', '0000010']
     day_labels = ['周一', '周二', '周三', '周四', '周五']
     hours = [0] * 5
-    for app in apps:
-        course = Course.query.get(app.course_id)
-        if not course:
-            continue
-        times = _parse_json_field(course.possible_times_json)
-        for t in times:
-            day, _ = _extract_time(t)
-            if day and day in day_keys:
-                hours[day_keys.index(day)] += 1
+    for item in scheduler.get_result():
+        if item['course_name'] in approved_ids and item['day'] in day_keys:
+            hours[day_keys.index(item['day'])] += 1
     return jsonify({'code': 0, 'data': {'days': day_labels, 'hours': hours}})

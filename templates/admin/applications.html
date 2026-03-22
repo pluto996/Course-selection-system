@@ -102,9 +102,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.getElementById('selectAll').addEventListener('change', function() {
-  document.querySelectorAll('.app-checkbox').forEach(cb => cb.checked = this.checked);
-});
-</script>
+<script src="{{ url_for('static', filename='js/applications.js') }}"></script>
 {% endblock %}

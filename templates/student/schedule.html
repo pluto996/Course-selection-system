@@ -1,0 +1,95 @@
+{% extends "role_base.html" %}
+{% block title %}公开课表 - 智能排课系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-table me-2 text-primary"></i>公开课表</h4>
+</div>
+
+<!-- 筛选栏 -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small mb-1">教师</label>
+        <select name="teacher_id" class="form-select form-select-sm">
+          <option value="">全部教师</option>
+          {% for t in teachers %}
+          <option value="{{ t.id }}" {% if teacher_filter == t.id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-1">教室</label>
+        <select name="room_id" class="form-select form-select-sm">
+          <option value="">全部教室</option>
+          {% for r in rooms %}
+          <option value="{{ r.id }}" {% if room_filter == r.id %}selected{% endif %}>{{ r.id }}（{{ r.capacity }}人）</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">星期</label>
+        <select name="day" class="form-select form-select-sm">
+          <option value="">全部</option>
+          {% for d, label in [('0100000','周一'),('0010000','周二'),('0001000','周三'),('0000100','周四'),('0000010','周五')] %}
+          <option value="{{ d }}" {% if day_filter == d %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>查询
+        </button>
+        <a href="{{ url_for('student.schedule') }}" class="btn btn-outline-secondary btn-sm ms-1">重置</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 课表 -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle mb-0" style="min-width:700px">
+        <thead class="table-dark">
+          <tr>
+            <th class="text-center" style="width:70px">节次</th>
+            {% for day in days_order %}
+            <th class="text-center">{{ day }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for sec in sections %}
+          <tr>
+            <td class="text-center bg-light fw-semibold small">第{{ sec }}节</td>
+            {% for day in days_order %}
+            {% set entries = schedule_data.get(day, {}).get(sec, []) %}
+            <td class="p-1" style="min-height:60px;vertical-align:top">
+              {% for entry in entries %}
+              {% set colors = ['#0d6efd','#198754','#dc3545','#fd7e14','#6610f2'] %}
+              {% set color = colors[loop.index0 % colors|length] %}
+              <div class="rounded p-1 mb-1 text-white position-relative"
+                   style="background:{{ color }};font-size:0.78rem">
+                <div class="fw-semibold">{{ entry.course_name[:12] }}</div>
+                <div style="opacity:.85">{{ entry.teacher[:8] }}</div>
+                <div style="opacity:.85"><i class="bi bi-building me-1"></i>{{ entry.room }}</div>
+                <a href="{{ url_for('student.apply', course_id=entry.course_id) }}"
+                   class="stretched-link" title="申请选课"></a>
+              </div>
+              {% endfor %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="mt-2 text-muted small">
+  <i class="bi bi-info-circle me-1"></i>点击课程块可申请选课
+</div>
+{% endblock %}

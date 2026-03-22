@@ -1,0 +1,115 @@
+{% extends "role_base.html" %}
+{% block title %}容量分析 - 排课可视化{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-building me-2 text-primary"></i>教室容量分析</h4>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div id="noDataMsg" class="text-center text-muted py-5 d-none">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>暂无教室数据
+    </div>
+    <canvas id="capacityChart" height="350"></canvas>
+  </div>
+</div>
+
+<!-- 超容量警告列表 -->
+<div class="card" id="overCapacityCard" style="display:none">
+  <div class="card-header text-danger">
+    <i class="bi bi-exclamation-triangle me-2"></i>超容量教室列表
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>教室</th><th>额定容量</th><th>实际使用</th><th>超出</th></tr>
+      </thead>
+      <tbody id="overCapacityBody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/viz/capacity')
+  .then(r => r.json())
+  .then(data => {
+    if (!data || data.length === 0) {
+      document.getElementById('noDataMsg').classList.remove('d-none');
+      document.getElementById('capacityChart').style.display = 'none';
+      return;
+    }
+
+    const labels = data.map(d => d.room_id);
+    const capacities = data.map(d => d.capacity);
+    const actuals = data.map(d => d.actual);
+    const bgColors = data.map(d => d.over_capacity ? 'rgba(220,53,69,0.8)' : 'rgba(25,135,84,0.7)');
+
+    new Chart(document.getElementById('capacityChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '额定容量',
+            data: capacities,
+            backgroundColor: 'rgba(13,110,253,0.6)',
+            borderColor: '#0d6efd',
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: '实际使用人数',
+            data: actuals,
+            backgroundColor: bgColors,
+            borderColor: data.map(d => d.over_capacity ? '#dc3545' : '#198754'),
+            borderWidth: 1,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              afterBody: function(items) {
+                const idx = items[0].dataIndex;
+                if (data[idx].over_capacity) return ['⚠️ 超出容量！'];
+                return [];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 45 } },
+          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.05)' } }
+        }
+      }
+    });
+
+    // 超容量列表
+    const overItems = data.filter(d => d.over_capacity);
+    if (overItems.length > 0) {
+      document.getElementById('overCapacityCard').style.display = '';
+      const tbody = document.getElementById('overCapacityBody');
+      overItems.forEach(d => {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td><code>${d.room_id}</code></td>
+            <td>${d.capacity}</td>
+            <td class="text-danger fw-bold">${d.actual}</td>
+            <td><span class="badge bg-danger">+${d.actual - d.capacity}</span></td>
+          </tr>`);
+      });
+    }
+  })
+  .catch(() => {
+    document.getElementById('noDataMsg').classList.remove('d-none');
+    document.getElementById('capacityChart').style.display = 'none';
+  });
+</script>
+{% endblock %}

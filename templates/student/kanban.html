@@ -1,0 +1,165 @@
+﻿{% extends "role_base.html" %}
+{% block title %}选课看板 - 智能排课系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.kanban-col { min-height: 300px; }
+.kanban-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.kanban-header { font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem; border-radius: 10px 10px 0 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <h4><i class="bi bi-kanban me-2 text-primary"></i>选课看板</h4>
+  <a href="{{ url_for('student.apply') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus me-1"></i>新建申请
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- 待审核 -->
+  <div class="col-md-4">
+    <div class="card kanban-col">
+      <div class="kanban-header bg-warning text-dark">
+        <i class="bi bi-hourglass-split me-2"></i>待审核
+        <span class="badge bg-dark ms-2">{{ grouped.pending|length }}</span>
+      </div>
+      <div class="card-body p-2">
+        {% for app in grouped.pending %}
+        <div class="card kanban-card mb-2 border-warning border-start border-3"
+             data-bs-toggle="modal" data-bs-target="#appDetailModal"
+             data-course="{{ app.course_id }}"
+             data-status="{{ app.status }}"
+             data-applied="{{ app.applied_at.strftime('%Y-%m-%d %H:%M') }}"
+             data-reviewed="{{ app.reviewed_at.strftime('%Y-%m-%d %H:%M') if app.reviewed_at else '' }}"
+             data-comment="{{ app.review_comment or '' }}"
+             onclick="showDetail(this)">
+          <div class="card-body py-2 px-3">
+            <div class="fw-semibold">{{ app.course_id }}</div>
+            <small class="text-muted">
+              <i class="bi bi-clock me-1"></i>{{ app.applied_at.strftime('%Y-%m-%d %H:%M') }}
+            </small>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4 small">暂无待审核申请</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 已通过 -->
+  <div class="col-md-4">
+    <div class="card kanban-col">
+      <div class="kanban-header bg-success text-white">
+        <i class="bi bi-check-circle me-2"></i>已通过
+        <span class="badge bg-white text-success ms-2">{{ grouped.approved|length }}</span>
+      </div>
+      <div class="card-body p-2">
+        {% for app in grouped.approved %}
+        <div class="card kanban-card mb-2 border-success border-start border-3"
+             data-bs-toggle="modal" data-bs-target="#appDetailModal"
+             data-course="{{ app.course_id }}"
+             data-status="{{ app.status }}"
+             data-applied="{{ app.applied_at.strftime('%Y-%m-%d %H:%M') }}"
+             data-reviewed="{{ app.reviewed_at.strftime('%Y-%m-%d %H:%M') if app.reviewed_at else '' }}"
+             data-comment="{{ app.review_comment or '' }}"
+             onclick="showDetail(this)">
+          <div class="card-body py-2 px-3">
+            <div class="fw-semibold">{{ app.course_id }}</div>
+            <small class="text-muted">
+              <i class="bi bi-calendar-check me-1"></i>
+              {{ app.reviewed_at.strftime('%Y-%m-%d') if app.reviewed_at else '-' }}
+            </small>
+            <div class="mt-1">
+              <a href="{{ url_for('student.review', course_id=app.course_id) }}"
+                 class="btn btn-sm btn-outline-success py-0 px-2"
+                 onclick="event.stopPropagation()">
+                <i class="bi bi-star me-1"></i>去评价
+              </a>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4 small">暂无已通过申请</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 已拒绝 -->
+  <div class="col-md-4">
+    <div class="card kanban-col">
+      <div class="kanban-header bg-danger text-white">
+        <i class="bi bi-x-circle me-2"></i>已拒绝
+        <span class="badge bg-white text-danger ms-2">{{ grouped.rejected|length }}</span>
+      </div>
+      <div class="card-body p-2">
+        {% for app in grouped.rejected %}
+        <div class="card kanban-card mb-2 border-danger border-start border-3"
+             data-bs-toggle="modal" data-bs-target="#appDetailModal"
+             data-course="{{ app.course_id }}"
+             data-status="{{ app.status }}"
+             data-applied="{{ app.applied_at.strftime('%Y-%m-%d %H:%M') }}"
+             data-reviewed="{{ app.reviewed_at.strftime('%Y-%m-%d %H:%M') if app.reviewed_at else '' }}"
+             data-comment="{{ app.review_comment or '' }}"
+             onclick="showDetail(this)">
+          <div class="card-body py-2 px-3">
+            <div class="fw-semibold">{{ app.course_id }}</div>
+            <small class="text-muted">
+              <i class="bi bi-calendar-x me-1"></i>
+              {{ app.reviewed_at.strftime('%Y-%m-%d') if app.reviewed_at else '-' }}
+            </small>
+            {% if app.review_comment %}
+            <div class="text-muted small mt-1">{{ app.review_comment[:40] }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4 small">暂无已拒绝申请</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 详情 Modal -->
+<div class="modal fade" id="appDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>申请详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="appDetailBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showDetail(el) {
+  const statusMap = { pending: '待审核', approved: '已通过', rejected: '已拒绝' };
+  const statusColor = { pending: 'warning', approved: 'success', rejected: 'danger' };
+  const status = el.dataset.status;
+  document.getElementById('appDetailBody').innerHTML = `
+    <div class="row g-2">
+      <div class="col-6"><small class="text-muted">课程</small><div class="fw-bold">${el.dataset.course}</div></div>
+      <div class="col-6"><small class="text-muted">状态</small>
+        <div><span class="badge bg-${statusColor[status]}">${statusMap[status]}</span></div>
+      </div>
+      <div class="col-6"><small class="text-muted">申请时间</small><div>${el.dataset.applied || '-'}</div></div>
+      <div class="col-6"><small class="text-muted">审批时间</small><div>${el.dataset.reviewed || '-'}</div></div>
+      <div class="col-12"><small class="text-muted">审批意见</small>
+        <div>${el.dataset.comment || '无'}</div>
+      </div>
+    </div>`;
+}
+</script>
+{% endblock %}

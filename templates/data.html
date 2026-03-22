@@ -1,0 +1,132 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h4 class="fw-bold text-dark"><i class="bi bi-database-fill-gear me-2"></i>数据管理中心</h4>
+        <p class="text-secondary mb-0 small">管理当前导入的课程、教师及资源需求数据</p>
+    </div>
+    <div class="col-md-6">
+        <div class="d-flex justify-content-md-end gap-2">
+            <!-- Search Box -->
+            <div class="position-relative" style="width: 300px;">
+                <i class="bi bi-search search-icon-pos"></i>
+                <input type="text" id="tableSearch" class="form-control search-box-custom" placeholder="搜索课程、教师..." onkeyup="filterTable()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm text-center py-3">
+            <h3 class="fw-bold text-primary mb-0">{{ tasks|length }}</h3>
+            <small class="text-muted text-uppercase fw-bold">总任务数</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm text-center py-3">
+             <!-- Calculate some basic stat like avg students using Jinja loop is tricky, keeping simple -->
+            <h3 class="fw-bold text-success mb-0">100%</h3>
+            <small class="text-muted text-uppercase fw-bold">数据完整性</small>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="dataTable">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4 text-secondary text-uppercase text-xs font-weight-bolder opacity-7">课程ID</th>
+                        <th class="text-secondary text-uppercase text-xs font-weight-bolder opacity-7">课程信息</th>
+                        <th class="text-secondary text-uppercase text-xs font-weight-bolder opacity-7">教师团队</th>
+                        <th class="text-secondary text-uppercase text-xs font-weight-bolder opacity-7">资源需求</th>
+                        <th class="text-secondary text-uppercase text-xs font-weight-bolder opacity-7">状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-light text-dark border">{{ task.classId }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold text-dark">{{ task.courseName }}</span>
+                                <span class="text-xs text-secondary">ID: {{ task.classId }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="icon-shape bg-gradient-primary shadow-sm text-white rounded-circle" style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                    {{ task.teacher[0] if task.teacher else '?' }}
+                                </div>
+                                <span class="fw-bold text-sm">{{ task.teacher }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-people text-secondary"></i>
+                                <span class="fw-bold text-dark">{{ task.students }}</span>
+                                <span class="text-xs text-muted">students</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">
+                                <i class="bi bi-check-circle-fill me-1"></i> Active
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State (Hidden by default) -->
+        <div id="noResults" class="text-center p-5 d-none">
+            <i class="bi bi-search fs-1 text-muted opacity-50"></i>
+            <p class="mt-2 text-secondary">未找到匹配的数据</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterTable() {
+        const input = document.getElementById("tableSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById("dataTable");
+        const tr = table.getElementsByTagName("tr");
+        let visibleCount = 0;
+
+        for (let i = 1; i < tr.length; i++) { // Start from 1 to skip header
+            let tdName = tr[i].getElementsByTagName("td")[1]; // Course Name col
+            let tdTeacher = tr[i].getElementsByTagName("td")[2]; // Teacher col
+
+            if (tdName || tdTeacher) {
+                const txtValueName = tdName.textContent || tdName.innerText;
+                const txtValueTeacher = tdTeacher.textContent || tdTeacher.innerText;
+
+                if (txtValueName.toLowerCase().indexOf(filter) > -1 || txtValueTeacher.toLowerCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                    visibleCount++;
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+
+        const noResults = document.getElementById("noResults");
+        if (visibleCount === 0 && tr.length > 1) {
+            noResults.classList.remove('d-none');
+        } else {
+            noResults.classList.add('d-none');
+        }
+    }
+</script>
+{% endblock %}

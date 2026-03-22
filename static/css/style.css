@@ -1,0 +1,293 @@
+
+/* Font & Body */
+body {
+    font-family: 'Plus Jakarta Sans', "Microsoft YaHei", sans-serif;
+    color: #2d3748;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Mesh Gradient Background */
+.main-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    background-color: #f0f2f5;
+    background-image:
+        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
+        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
+        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+    background-image:
+        radial-gradient(at 40% 20%, rgba(94, 114, 228, 0.15) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, rgba(45, 206, 137, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, rgba(251, 99, 64, 0.15) 0px, transparent 50%),
+        radial-gradient(at 80% 50%, rgba(17, 205, 239, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(94, 114, 228, 0.15) 0px, transparent 50%),
+        radial-gradient(at 80% 100%, rgba(251, 99, 64, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 0%, rgba(255, 255, 255, 0.8) 0px, transparent 50%);
+    background-size: 150% 150%;
+    animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Glassmorphism Navbar */
+.glass-nav {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+.glass-nav .navbar-brand {
+    color: #344767 !important;
+}
+
+.glass-nav .nav-link {
+    color: #67748e !important;
+    font-weight: 600;
+}
+
+.glass-nav .nav-link:hover, .glass-nav .nav-link.active {
+    background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+    color: #fff !important;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+    color: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Modern Cards */
+.card {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 1.5rem;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+}
+
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Utils */
+.text-xs { font-size: 0.75rem !important; }
+.font-weight-bolder { font-weight: 700 !important; }
+.opacity-7 { opacity: 0.7 !important; }
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+/* --- Home / Dashboard Styles --- */
+.hero-wrapper { padding: 3rem 0; }
+.hero-title {
+    font-weight: 800;
+    background: -webkit-linear-gradient(315deg, #3a416f 0%, #5e72e4 74%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.hero-img-container {
+    position: relative;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.floating-card {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+    animation: float 6s ease-in-out infinite;
+}
+.fc-1 { top: 10%; right: 10%; animation-delay: 0s; z-index: 2; }
+.fc-2 { bottom: 10%; left: 5%; animation-delay: 1.5s; z-index: 1; filter: blur(1px); }
+.fc-3 { top: 40%; left: 40%; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #ffd600 0%, #be9e44 100%); z-index: 0; animation: float 8s infinite reverse; opacity: 0.5; }
+
+@keyframes float {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(2deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.stat-card-modern { overflow: hidden; position: relative; z-index: 1; }
+.stat-card-modern::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: -1;
+}
+.icon-shape {
+    width: 48px;
+    height: 48px;
+    background-position: center;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+.bg-gradient-primary { background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%); }
+.bg-gradient-success { background: linear-gradient(310deg, #2dce89 0%, #2dcecc 100%); }
+.bg-gradient-info    { background: linear-gradient(310deg, #11cdef 0%, #1171ef 100%); }
+.bg-gradient-warning { background: linear-gradient(310deg, #fb6340 0%, #fbb140 100%); }
+
+/* --- Schedule Styles --- */
+.course-card {
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.course-card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.bg-primary { background-color: #5e72e4 !important; }
+
+/* --- Generate / Upload Styles --- */
+#dropZone {
+    border: 2px dashed #cbd5e0 !important;
+    background-color: rgba(248, 249, 250, 0.7);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+#dropZone:hover {
+    border-color: #5e72e4 !important;
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+#dropZone i { transition: transform 0.3s ease; }
+#dropZone:hover i { transform: scale(1.2); }
+
+.accordion-button:not(.collapsed) {
+    color: #5e72e4;
+    background-color: rgba(94, 114, 228, 0.05);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+}
+.accordion-button:focus {
+    border-color: rgba(94, 114, 228, 0.5);
+    box-shadow: 0 0 0 0.25rem rgba(94, 114, 228, 0.25);
+}
+
+/* --- New Features: Live Terminal --- */
+.terminal-window {
+    background-color: #1a202c;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+}
+.terminal-header {
+    background-color: #2d3748;
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+}
+.terminal-dots {
+    display: flex;
+    gap: 6px;
+}
+.terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.terminal-body {
+    height: 200px;
+    padding: 15px;
+    color: #48bb78;
+    font-size: 0.85rem;
+    overflow-y: auto;
+    line-height: 1.5;
+}
+.log-line {
+    margin-bottom: 4px;
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+.log-line.warn { color: #ecc94b; }
+.log-line.error { color: #f56565; }
+.log-line.highlight { color: #63b3ed; font-weight: bold; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- New Features: Heatmap Grid (Visual Only) --- */
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+}
+.heatmap-cell {
+    background-color: #e2e8f0;
+    border-radius: 4px;
+    height: 20px;
+    transition: all 0.3s;
+}
+.heatmap-cell:hover { transform: scale(1.1); }
+.heat-low { background-color: #c3dafe; }
+.heat-med { background-color: #7f9cf5; }
+.heat-high { background-color: #5a67d8; }
+.heat-max { background-color: #434190; }
+
+/* --- Search Box --- */
+.search-box-custom {
+    border-radius: 20px;
+    padding-left: 40px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s;
+}
+.search-box-custom:focus {
+    box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
+    border-color: #5e72e4;
+}
+.search-icon-pos {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+}

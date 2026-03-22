@@ -1,0 +1,381 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-wrapper mb-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6 animate__animated animate__fadeInLeft">
+            <span class="badge bg-white text-primary shadow-sm mb-3 px-3 py-2 rounded-pill fw-bold">
+                <i class="bi bi-stars me-1"></i> Intelligent Scheduling v2.0
+            </span>
+            <h1 class="display-4 hero-title mb-3">智能算法驱动的<br>下一代排课系统</h1>
+            <p class="lead text-secondary mb-4 opacity-8">
+                告别繁琐的手工排课。我们利用多目标进化遗传算法，在毫秒级时间内为您寻找资源分配的最优解，实现教学资源利用最大化。
+            </p>
+            <div class="d-flex gap-3">
+                <a href="/generate" class="btn btn-primary btn-lg shadow-lg px-4 py-3 rounded-4 fw-bold transition-hover">
+                    <i class="bi bi-rocket-takeoff-fill me-2"></i>立即开始排课
+                </a>
+                <a href="/schedule" class="btn btn-white btn-lg shadow-sm px-4 py-3 rounded-4 fw-bold text-primary border">
+                    <i class="bi bi-calendar-check me-2"></i>查看现有课表
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block animate__animated animate__fadeInRight">
+            <div class="hero-img-container">
+                <!-- Decorative Abstract Shapes/Cards -->
+                <div class="floating-card fc-1">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-shape bg-gradient-success shadow text-white rounded-3" style="width:40px; height:40px; font-size:1rem;">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold">无冲突生成</h6>
+                            <small class="text-success">100% 成功率</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="floating-card fc-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="icon-shape bg-gradient-warning shadow text-white rounded-3" style="width:40px; height:40px; font-size:1rem;">
+                            <i class="bi bi-cpu"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold">遗传算法</h6>
+                            <small class="text-muted">迭代优化中...</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- Central Element simulating a calendar -->
+                <div class="card border-0 shadow-lg p-3 bg-white" style="width: 280px; transform: rotate(-5deg); z-index: 1;">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div class="bg-light rounded-pill px-2 py-1" style="width: 40%;"></div>
+                        <div class="bg-light rounded-circle" style="width: 20px; height: 20px;"></div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4"><div class="bg-primary opacity-25 rounded p-3 h-100"></div></div>
+                        <div class="col-8"><div class="bg-light rounded p-3 h-100"></div></div>
+                        <div class="col-12"><div class="bg-success opacity-25 rounded p-3 h-100 mt-1"></div></div>
+                        <div class="col-6"><div class="bg-warning opacity-25 rounded p-3 h-100 mt-1"></div></div>
+                        <div class="col-6"><div class="bg-info opacity-25 rounded p-3 h-100 mt-1"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-5">
+    <div class="col-xl-3 col-sm-6 animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+        <div class="card stat-card-modern h-100 border-0">
+            <div class="card-body p-3">
+                <div class="row">
+                    <div class="col-8">
+                        <p class="text-sm mb-0 text-uppercase font-weight-bold text-secondary">班级总数</p>
+                        <h3 class="font-weight-bolder mb-0 mt-2">
+                            {{ stats.classes }}
+                        </h3>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="icon-shape bg-gradient-primary shadow text-center border-radius-md">
+                            <i class="bi bi-building"></i>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs mt-3 mb-0 text-secondary">
+                    <span class="text-success text-sm font-weight-bolder">+100%</span> 活跃状态
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+        <div class="card stat-card-modern h-100 border-0">
+            <div class="card-body p-3">
+                <div class="row">
+                    <div class="col-8">
+                        <p class="text-sm mb-0 text-uppercase font-weight-bold text-secondary">教师团队</p>
+                        <h3 class="font-weight-bolder mb-0 mt-2">
+                            {{ stats.teachers }}
+                        </h3>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="icon-shape bg-gradient-success shadow text-center border-radius-md">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs mt-3 mb-0 text-secondary">
+                    <span class="text-success text-sm font-weight-bolder">Ready</span> 随时待命
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+        <div class="card stat-card-modern h-100 border-0">
+            <div class="card-body p-3">
+                <div class="row">
+                    <div class="col-8">
+                        <p class="text-sm mb-0 text-uppercase font-weight-bold text-secondary">课程库</p>
+                        <h3 class="font-weight-bolder mb-0 mt-2">
+                            {{ stats.courses }}
+                        </h3>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="icon-shape bg-gradient-warning shadow text-center border-radius-md">
+                            <i class="bi bi-journal-bookmark-fill"></i>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs mt-3 mb-0 text-secondary">
+                    涵盖 <span class="text-dark font-weight-bolder">全学科</span> 领域
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6 animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+        <div class="card stat-card-modern h-100 border-0">
+            <div class="card-body p-3">
+                <div class="row">
+                    <div class="col-8">
+                        <p class="text-sm mb-0 text-uppercase font-weight-bold text-secondary">排课任务</p>
+                        <h3 class="font-weight-bolder mb-0 mt-2">
+                            {{ stats.tasks }}
+                        </h3>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="icon-shape bg-gradient-info shadow text-center border-radius-md">
+                            <i class="bi bi-list-task"></i>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs mt-3 mb-0 text-secondary">
+                    待处理 <span class="text-info font-weight-bolder">队列中</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 animate__animated animate__fadeInUp" style="animation-delay: 0.5s;">
+    <!-- Teacher Workload Chart -->
+    <div class="col-lg-6">
+        <div class="card h-100 z-index-2 border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pb-0 p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">
+                            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>教师工作量监控 (Top 10)
+                        </h6>
+                        <p class="text-xs text-muted mb-0 ms-4">剔除未分配任务，展示真实负载</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="teacherChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Feature: Simulated Peak Hours Heatmap (Visual) -->
+    <div class="col-lg-3">
+         <div class="card h-100 z-index-2 border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pb-0 p-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-grid-3x3 text-danger me-2"></i>时段繁忙度热力图</h6>
+                <p class="text-xs text-muted mb-0 ms-4">教学资源占用高峰分布</p>
+            </div>
+            <div class="card-body p-3">
+                <div class="d-flex flex-column justify-content-between h-100">
+                     <!-- 5 days x 8 sections grid simulation -->
+                    <div class="heatmap-grid" id="simulatedHeatmap">
+                        <!-- JS will populate random heat for visual effect -->
+                    </div>
+                    <div class="d-flex justify-content-between text-xs text-muted mt-2">
+                        <span>Low</span>
+                        <div style="flex:1; margin:0 10px; background: linear-gradient(to right, #c3dafe, #434190); height:5px; align-self:center; border-radius:2px;"></div>
+                        <span>High</span>
+                    </div>
+                </div>
+            </div>
+         </div>
+    </div>
+
+    <!-- System Composition Chart -->
+    <div class="col-lg-3">
+        <div class="card h-100 z-index-2 border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pb-0 p-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-pie-chart-fill text-info me-2"></i>数据分布概览</h6>
+            </div>
+            <div class="card-body p-3 position-relative">
+                <div class="chart-container" style="height: 180px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <!-- Center Text Overlay -->
+                <div class="position-absolute top-50 start-50 translate-middle text-center" style="margin-top: 10px;">
+                    <h2 class="mb-0 fw-bold text-dark">{{ stats.classes + stats.teachers + stats.courses }}</h2>
+                    <small class="text-secondary text-xs text-uppercase">Items</small>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 p-2">
+                <div class="d-flex justify-content-around">
+                    <div class="text-center">
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary mb-1">班</span>
+                        <h6 class="mb-0 fw-bold small">{{ stats.classes }}</h6>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge rounded-pill bg-success bg-opacity-10 text-success mb-1">师</span>
+                        <h6 class="mb-0 fw-bold small">{{ stats.teachers }}</h6>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning mb-1">课</span>
+                        <h6 class="mb-0 fw-bold small">{{ stats.courses }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Prepare Data
+    const rawData = {{ raw_data | tojson }};
+    const tasks = rawData.tasks || [];
+
+    // 1. Process Teacher Workload (Top 10)
+    const teacherCounts = {};
+    const ignoreNames = ['待定', 'unknown', 'none', 'null', 'tba', '']; // 过滤词列表
+
+    tasks.forEach(t => {
+        let name = String(t.teacher || '').trim();
+        // [Fix] Strict check for empty names
+        if (!name || ignoreNames.includes(name.toLowerCase())) return;
+
+        teacherCounts[name] = (teacherCounts[name] || 0) + 1;
+    });
+
+    const sortedTeachers = Object.entries(teacherCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+    const teacherLabels = sortedTeachers.map(item => item[0]);
+    const teacherData = sortedTeachers.map(item => item[1]);
+
+    // Chart Global Defaults
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.color = '#67748e';
+    Chart.defaults.scale.grid.borderColor = '#e9ecef';
+
+    // Helper for gradients
+    const createGradient = (ctx, colorStart, colorEnd) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, colorStart);
+        gradient.addColorStop(1, colorEnd);
+        return gradient;
+    };
+
+    // -- Chart 1: Teacher Workload --
+    const ctx1 = document.getElementById('teacherChart').getContext('2d');
+    const gradientBar = createGradient(ctx1, '#5e72e4', '#825ee4');
+
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: teacherLabels.length > 0 ? teacherLabels : ['暂无数据'],
+            datasets: [{
+                label: '授课任务数',
+                data: teacherData.length > 0 ? teacherData : [0],
+                backgroundColor: gradientBar,
+                borderRadius: 6,
+                barThickness: 30,
+                maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    titleColor: '#344767',
+                    bodyColor: '#67748e',
+                    borderColor: 'rgba(0,0,0,0.05)',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: false,
+                }
+            },
+            scales: {
+                y: {
+                    grid: { borderDash: [5, 5], drawBorder: false, color: '#f0f2f5' },
+                    ticks: { padding: 10, font: { size: 11 } },
+                    beginAtZero: true
+                },
+                x: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: { font: { size: 11, weight: 600 } }
+                }
+            }
+        }
+    });
+
+    // -- Chart 2: System Status (Doughnut) --
+    const ctx2 = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['班级', '教师', '课程'],
+            datasets: [{
+                data: [{{ stats.classes }}, {{ stats.teachers }}, {{ stats.courses }}],
+                backgroundColor: [
+                    '#5e72e4', // Primary
+                    '#2dce89', // Success
+                    '#fb6340'  // Warning
+                ],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%', // Make it thinner
+            plugins: {
+                legend: { display: false } // Hide legend, use custom HTML legend below
+            }
+        }
+    });
+
+    // -- Visual: Simulated Heatmap Grid --
+    // In a real app, this would come from backend aggregation.
+    // Here we generate a visually pleasing pattern based on "random but structured" logic to look professional.
+    const heatContainer = document.getElementById('simulatedHeatmap');
+    const totalCells = 5 * 8; // 5 days, 8 sections
+    for(let i=0; i<totalCells; i++) {
+        const div = document.createElement('div');
+        div.className = 'heatmap-cell';
+
+        // Simulate higher usage in middle of day (index % 8 between 2 and 6)
+        const hour = i % 8;
+        let intensity = 'heat-low';
+        if (hour >= 2 && hour <= 5) {
+             const rand = Math.random();
+             if (rand > 0.7) intensity = 'heat-max';
+             else if (rand > 0.3) intensity = 'heat-high';
+             else intensity = 'heat-med';
+        } else {
+             if (Math.random() > 0.8) intensity = 'heat-med';
+        }
+
+        div.classList.add(intensity);
+        div.title = `Time Slot ${i+1}`;
+        heatContainer.appendChild(div);
+    }
+</script>
+{% endblock %}

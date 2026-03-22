@@ -1,0 +1,134 @@
+{% extends "role_base.html" %}
+{% block title %}我的课表 - 智能排课系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.calendar-grid { display: grid; grid-template-columns: 60px repeat(5, 1fr); gap: 4px; }
+.calendar-header { background: #f8f9fa; border-radius: 8px; padding: 8px; text-align: center; font-weight: 600; font-size: 0.9rem; }
+.calendar-section-label { background: #f8f9fa; border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.8rem; color: #6c757d; display: flex; align-items: center; justify-content: center; }
+.calendar-cell { min-height: 72px; border-radius: 8px; background: #f8f9fa; border: 1px solid #e9ecef; }
+.calendar-cell.has-course { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.calendar-cell.has-course:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.course-block { height: 100%; border-radius: 8px; padding: 6px 8px; color: #fff; font-size: 0.8rem; }
+.course-block .course-name { font-weight: 600; line-height: 1.2; }
+.course-block .course-meta { opacity: 0.85; font-size: 0.72rem; margin-top: 2px; }
+@media (max-width: 768px) {
+  .calendar-grid { display: none; }
+  .mobile-list { display: block; }
+}
+@media (min-width: 769px) { .mobile-list { display: none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-calendar-week me-2 text-primary"></i>我的课表</h4>
+</div>
+
+{% if not teacher %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  您的账号尚未关联教师记录，请联系管理员绑定。
+</div>
+{% else %}
+
+<!-- 桌面端网格课表 -->
+<div class="card">
+  <div class="card-body">
+    <div class="calendar-grid">
+      <!-- 表头 -->
+      <div class="calendar-header"></div>
+      {% for day in days_order %}
+      <div class="calendar-header">{{ day }}</div>
+      {% endfor %}
+
+      <!-- 节次行 -->
+      {% for sec in sections %}
+      <div class="calendar-section-label">第{{ sec }}节</div>
+      {% for day in days_order %}
+      {% set courses_in_cell = calendar_data.get(day, {}).get(sec, []) %}
+      <div class="calendar-cell {% if courses_in_cell %}has-course{% endif %}"
+           {% if courses_in_cell %}
+           data-bs-toggle="modal" data-bs-target="#courseDetailModal"
+           onclick="showCourseDetail({{ courses_in_cell | tojson }})"
+           {% endif %}>
+        {% for c in courses_in_cell %}
+        {% set colors = ['#0d6efd','#198754','#dc3545','#fd7e14','#6610f2','#20c997'] %}
+        {% set color = colors[loop.index0 % colors|length] %}
+        <div class="course-block" style="background:{{ color }}">
+          <div class="course-name">{{ c.course_name[:10] }}</div>
+          <div class="course-meta">
+            <i class="bi bi-building me-1"></i>{{ c.room }}<br>
+            <i class="bi bi-people me-1"></i>{{ c.class_size }}人
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- 移动端列表 -->
+<div class="mobile-list">
+  {% for day in days_order %}
+  {% set day_courses = [] %}
+  {% for sec in sections %}
+    {% for c in calendar_data.get(day, {}).get(sec, []) %}
+      {% set _ = day_courses.append({'sec': sec, 'course': c}) %}
+    {% endfor %}
+  {% endfor %}
+  {% if day_courses %}
+  <div class="card mb-2">
+    <div class="card-header fw-bold">{{ day }}</div>
+    <div class="card-body p-0">
+      {% for item in day_courses %}
+      <div class="list-group-item px-3 py-2 border-bottom">
+        <div class="fw-semibold">第{{ item.sec }}节 · {{ item.course.course_name }}</div>
+        <small class="text-muted">教室：{{ item.course.room }} · {{ item.course.class_size }}人</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% endif %}
+
+<!-- 课程详情 Modal -->
+<div class="modal fade" id="courseDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-book me-2"></i>课程详情</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="courseDetailBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showCourseDetail(courses) {
+  let html = '';
+  courses.forEach(c => {
+    html += `
+      <div class="mb-3 p-3 bg-light rounded">
+        <div class="fw-bold fs-6 mb-2">${c.course_name}</div>
+        <div class="row g-2">
+          <div class="col-6"><small class="text-muted">教室</small><div>${c.room}</div></div>
+          <div class="col-6"><small class="text-muted">班级人数</small><div>${c.class_size} 人</div></div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('courseDetailBody').innerHTML = html;
+}
+</script>
+{% endblock %}

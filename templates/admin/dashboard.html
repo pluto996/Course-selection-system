@@ -1,0 +1,365 @@
+{% extends "role_base.html" %}
+{% block title %}管理员仪表盘 - 智能排课系统{% endblock %}
+
+{% block extra_css %}
+<style>
+#dropZone {
+  border: 2px dashed #cbd5e0;
+  border-radius: 12px;
+  background: rgba(248,249,250,.6);
+  transition: all .25s;
+  cursor: pointer;
+}
+#dropZone:hover, #dropZone.drag-over {
+  border-color: #5e72e4;
+  background: rgba(94,114,228,.06);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <h4><i class="bi bi-speedometer2 me-2 text-primary"></i>管理员仪表盘</h4>
+  <span class="text-muted small">{{ now.strftime('%Y年%m月%d日') if now else '' }}</span>
+</div>
+
+<!-- 统计卡片 -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card bg-gradient-primary">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total_users }}</div><div class="stat-label">系统用户</div></div>
+        <i class="bi bi-people stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card bg-gradient-success">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total_courses }}</div><div class="stat-label">课程总数</div></div>
+        <i class="bi bi-book stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card bg-gradient-warning">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total_rooms }}</div><div class="stat-label">教室总数</div></div>
+        <i class="bi bi-building stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card bg-gradient-danger">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total_teachers }}</div><div class="stat-label">教师总数</div></div>
+        <i class="bi bi-person-badge stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 排课控制台 -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-cpu me-2 text-primary"></i>NSGA-II 多目标进化排课控制台</span>
+        <span id="statusBadge" class="badge bg-secondary">待机</span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <!-- 左：上传 + 参数 + 按钮 -->
+          <div class="col-lg-5">
+            <!-- 文件上传区 -->
+            <div id="dropZone" class="p-4 text-center mb-3 position-relative">
+              <input type="file" id="fileInput" accept=".xml"
+                     class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+                     style="cursor:pointer" onchange="handleFileSelect(this)">
+              <div id="uploadText">
+                <i class="bi bi-cloud-upload fs-2 text-primary"></i>
+                <p class="mb-0 mt-1 small fw-600">点击上传 XML 文件</p>
+              </div>
+              <div id="fileInfo" class="d-none">
+                <i class="bi bi-file-earmark-check fs-2 text-success"></i>
+                <p class="mb-0 mt-1 small fw-bold text-success" id="fileName"></p>
+              </div>
+            </div>
+
+            <!-- 算法参数 -->
+            <div class="accordion mb-3" id="algoAccordion">
+              <div class="accordion-item border-0" style="background:rgba(248,249,250,.7);border-radius:10px!important">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed fw-600 small" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#algoParams"
+                          style="background:transparent;border-radius:10px!important">
+                    <i class="bi bi-sliders me-2 text-primary"></i>算法高级参数（可选）
+                  </button>
+                </h2>
+                <div id="algoParams" class="accordion-collapse collapse">
+                  <div class="accordion-body pt-2">
+                    <div class="row g-2">
+                      <div class="col-12">
+                        <label class="form-label small fw-600">初始化策略</label>
+                        <select class="form-select form-select-sm" id="initStrategy">
+                          <option value="greedy" selected>🚀 智能贪婪（推荐）</option>
+                          <option value="random">🎲 完全随机</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-600">种群大小 N</label>
+                        <input type="number" class="form-control form-control-sm" id="popSize" value="50">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-600">最大进化代数</label>
+                        <input type="number" class="form-control form-control-sm" id="generations" value="1000">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-600">交叉率 P<sub>c</sub></label>
+                        <input type="number" step="0.01" min="0" max="1" class="form-control form-control-sm" id="crossoverRate" value="0.8">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-600">变异率 P<sub>m</sub></label>
+                        <input type="number" step="0.01" min="0" max="1" class="form-control form-control-sm" id="mutationRate" value="0.2">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-600">精英保留数</label>
+                        <input type="number" class="form-control form-control-sm" id="eliteSize" value="2">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="d-flex gap-2">
+              <button id="startBtn" class="btn btn-primary flex-fill" disabled onclick="startOptimization()">
+                <i class="bi bi-play-circle me-1"></i>启动排课
+              </button>
+              <button id="stopBtn" class="btn btn-danger flex-fill d-none" onclick="stopOptimization()">
+                <i class="bi bi-stop-circle me-1"></i>停止
+              </button>
+              <button id="continueBtn" class="btn btn-outline-primary d-none" onclick="continueOptimization()">
+                <i class="bi bi-arrow-repeat me-1"></i>继续优化
+              </button>
+            </div>
+
+            <div id="successMessage" class="alert alert-success mt-3 d-none py-2 text-center">
+              <i class="bi bi-check-circle-fill me-1"></i>排课完成！
+              <a href="{{ url_for('admin.schedule_result') }}" class="btn btn-sm btn-success ms-2">
+                <i class="bi bi-table me-1"></i>查看排课结果
+              </a>
+            </div>
+          </div>
+
+          <!-- 右：进度 + 终端 -->
+          <div class="col-lg-7">
+            <!-- 进度条 -->
+            <div id="progressSection" class="mb-3">
+              <div class="progress mb-2" style="height:20px;border-radius:10px">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                     style="width:0%;border-radius:10px">0%</div>
+              </div>
+              <div class="row text-center g-2">
+                <div class="col-4">
+                  <div class="card py-2">
+                    <div class="fw-bold fs-5" id="genCount">0</div>
+                    <small class="text-muted">进化代数</small>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="card py-2">
+                    <div class="fw-bold fs-5 text-danger" id="hardCount">-</div>
+                    <small class="text-muted">f₁ 硬冲突</small>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="card py-2">
+                    <div class="fw-bold fs-5 text-success" id="softScore">-</div>
+                    <small class="text-muted">f₂ 负载方差</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 收敛图 -->
+            <div class="card mb-3">
+              <div class="card-body py-2 px-3">
+                <canvas id="evolutionChart" height="120"></canvas>
+              </div>
+            </div>
+
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block modals %}{% endblock %}
+
+{% block extra_js %}
+<script>
+
+// ── 排课控制台 ────────────────────────────────────────────────
+let pollInterval, evolutionChart, lastGen = 0;
+
+function initEvolutionChart() {
+  if (evolutionChart) { evolutionChart.destroy(); }
+  evolutionChart = new Chart(document.getElementById('evolutionChart'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'f₁ 硬冲突数', data: [], borderColor: '#f5365c',
+          backgroundColor: 'rgba(245,54,92,.08)', yAxisID: 'y',
+          tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 },
+        { label: 'f₂ 教师负载方差', data: [], borderColor: '#2dce89',
+          backgroundColor: 'rgba(45,206,137,.08)', yAxisID: 'y1',
+          tension: 0.4, fill: false, pointRadius: 0, borderWidth: 1.5,
+          borderDash: [4,3] },
+        { label: 'f₃ 时间分布方差', data: [], borderColor: '#fb6340',
+          backgroundColor: 'rgba(251,99,64,.08)', yAxisID: 'y1',
+          tension: 0.4, fill: false, pointRadius: 0, borderWidth: 1.5,
+          borderDash: [2,3] }
+      ]
+    },
+    options: {
+      responsive: true, animation: { duration: 0 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { font: { size: 10 }, boxWidth: 20 } } },
+      scales: {
+        x: { display: true, grid: { display: false } },
+        y:  { type: 'linear', position: 'left',  beginAtZero: true,
+               title: { display: true, text: '硬冲突', font: { size: 10 } },
+               grid: { borderDash: [4,4] } },
+        y1: { type: 'linear', position: 'right', beginAtZero: true,
+               title: { display: true, text: '方差', font: { size: 10 } },
+               grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+function handleFileSelect(input) {
+  if (input.files[0]) uploadFile(input.files[0]);
+}
+
+// 拖拽支持
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+});
+
+function uploadFile(file) {
+  document.getElementById('uploadText').innerHTML = '<i class="bi bi-arrow-repeat fs-2 text-primary spin"></i><p class="mb-0 mt-1 small">上传中...</p>';
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch('/api/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        showToast(data.error, 'danger');
+        document.getElementById('uploadText').innerHTML = '<i class="bi bi-cloud-upload fs-2 text-primary"></i><p class="mb-0 mt-1 small fw-600">点击上传 XML 文件</p>';
+      } else {
+        document.getElementById('uploadText').classList.add('d-none');
+        document.getElementById('fileInfo').classList.remove('d-none');
+        document.getElementById('fileName').textContent = data.filename;
+        document.getElementById('startBtn').disabled = false;
+      }
+    });
+}
+
+function getParams() {
+  return {
+    init_strategy:   document.getElementById('initStrategy').value,
+    population_size: +document.getElementById('popSize').value,
+    generations:     +document.getElementById('generations').value,
+    crossover_rate:  +document.getElementById('crossoverRate').value,
+    mutation_rate:   +document.getElementById('mutationRate').value,
+    elite_size:      +document.getElementById('eliteSize').value
+  };
+}
+
+function startOptimization(isContinue = false) {
+  const params = getParams();
+  if (isContinue) {
+    params.continue_optimization = true;
+    params.generations = 100;
+    document.getElementById('continueBtn').classList.add('d-none');
+  } else {
+    document.getElementById('successMessage').classList.add('d-none');
+    document.getElementById('continueBtn').classList.add('d-none');
+    initEvolutionChart();
+    lastGen = 0;
+  }
+  document.getElementById('startBtn').classList.add('d-none');
+  document.getElementById('stopBtn').classList.remove('d-none');
+  document.getElementById('statusBadge').className = 'badge bg-primary';
+  document.getElementById('statusBadge').textContent = '进化中';
+
+  fetch('/api/start_optimization', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  }).then(r => r.json()).then(data => {
+    if (data.status === 'started') {
+      pollInterval = setInterval(pollProgress, 600);
+    }
+  });
+}
+
+function continueOptimization() { startOptimization(true); }
+
+function stopOptimization() {
+  fetch('/api/stop', { method: 'POST' });
+}
+
+function pollProgress() {
+  fetch('/api/progress').then(r => r.json()).then(data => {
+    const bar = document.getElementById('progressBar');
+    bar.style.width = data.progress_percent + '%';
+    bar.textContent = data.progress_percent + '%';
+    document.getElementById('genCount').textContent = data.generation;
+    document.getElementById('hardCount').textContent = data.hard_conflicts;
+    document.getElementById('softScore').textContent = parseFloat(data.f2 || 0).toFixed(2);
+
+    const statusLabels = { 'RUNNING': '进化中', 'COMPLETED': '已收敛', 'STOPPED': '已停止', 'IDLE': '待机' };
+    document.getElementById('statusBadge').textContent = statusLabels[data.status] || data.status;
+
+    if (data.generation > lastGen + 10) {
+      lastGen = data.generation;
+    }
+
+    if (data.history && evolutionChart) {
+      evolutionChart.data.labels = data.history.map(h => h.gen);
+      evolutionChart.data.datasets[0].data = data.history.map(h => h.hard);
+      evolutionChart.data.datasets[1].data = data.history.map(h => h.f2 || 0);
+      evolutionChart.data.datasets[2].data = data.history.map(h => h.f3 || 0);
+      evolutionChart.update();
+    }
+
+    if (data.status === 'COMPLETED' || data.status === 'STOPPED') {
+      clearInterval(pollInterval);
+      document.getElementById('startBtn').classList.remove('d-none');
+      document.getElementById('stopBtn').classList.add('d-none');
+      document.getElementById('statusBadge').className = data.status === 'COMPLETED' ? 'badge bg-success' : 'badge bg-secondary';
+      document.getElementById('statusBadge').textContent = data.status === 'COMPLETED' ? '已收敛' : '已停止';
+      if (data.status === 'COMPLETED') {
+        document.getElementById('successMessage').classList.remove('d-none');
+        document.getElementById('continueBtn').classList.remove('d-none');
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "role_base.html" %}
+{% block title %}课程评价 - 智能排课系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; }
+.star-rating input { display: none; }
+.star-rating label { font-size: 2rem; color: #dee2e6; cursor: pointer; transition: color .15s; }
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label { color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-star me-2 text-primary"></i>课程评价</h4>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-pencil me-2"></i>提交评价</div>
+      <div class="card-body">
+        {% if not course %}
+        <div class="alert alert-warning">未指定课程，请从选课看板进入评价页面。</div>
+        {% elif already_reviewed %}
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle me-2"></i>您已评价过该课程。
+        </div>
+        {% else %}
+        <form id="reviewForm">
+          <input type="hidden" name="course_id" value="{{ course_id }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">课程</label>
+            <div class="form-control-plaintext fw-bold">{{ course.id }}</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">评分 <span class="text-danger">*</span></label>
+            <div class="star-rating">
+              {% for i in [5,4,3,2,1] %}
+              <input type="radio" name="score" id="star{{ i }}" value="{{ i }}" required>
+              <label for="star{{ i }}">★</label>
+              {% endfor %}
+            </div>
+            <div class="form-text">点击星星选择评分（1-5分）</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">评价内容（可选）</label>
+            <textarea class="form-control" name="content" rows="4"
+                      placeholder="分享您对这门课程的看法…" maxlength="500"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+            <i class="bi bi-send me-1"></i>提交评价
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bar-chart me-2"></i>历史评分分布</div>
+      <div class="card-body">
+        {% if score_dist and score_dist.values() | sum > 0 %}
+        <canvas id="scoreDistChart" height="220"></canvas>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-bar-chart fs-1 d-block mb-2"></i>暂无评分数据
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if score_dist and score_dist.values() | sum > 0 %}
+new Chart(document.getElementById('scoreDistChart'), {
+  type: 'bar',
+  data: {
+    labels: ['1分','2分','3分','4分','5分'],
+    datasets: [{
+      label: '评价人数',
+      data: [{{ score_dist[1] }},{{ score_dist[2] }},{{ score_dist[3] }},{{ score_dist[4] }},{{ score_dist[5] }}],
+      backgroundColor: ['#dc3545','#fd7e14','#ffc107','#20c997','#198754'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,.05)' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+{% endif %}
+
+{% if not already_reviewed and course %}
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const score = document.querySelector('input[name="score"]:checked');
+  if (!score) { showToast('请选择评分', 'warning'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>提交中…';
+
+  const fd = new FormData(this);
+  fetch('/student/review', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.code === 0) {
+        showToast(data.message, 'success');
+        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>已提交';
+        this.querySelectorAll('input,textarea,button').forEach(el => el.disabled = true);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i>提交评价';
+        showToast(data.message, 'danger');
+      }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}

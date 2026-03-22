@@ -1,0 +1,79 @@
+{% extends "role_base.html" %}
+{% block title %}选课申请 - 智能排课系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-plus-circle me-2 text-primary"></i>选课申请</h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-book me-2"></i>提交选课申请</div>
+      <div class="card-body">
+        <form id="applyForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">选择课程 <span class="text-danger">*</span></label>
+            <select class="form-select" name="course_id" id="courseSelect" required>
+              <option value="">-- 请选择课程 --</option>
+              {% for c in courses %}
+              <option value="{{ c.id }}" {% if c.id == course_id %}selected{% endif %}>
+                {{ c.id }}（{{ c.class_limit }}人）
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {% if selected_course %}
+          <div class="alert alert-info py-2">
+            <div class="fw-semibold">{{ selected_course.id }}</div>
+            <small>班级人数：{{ selected_course.class_limit }} 人</small><br>
+            <small>授课教师：{{ selected_course.instructors | map(attribute='name') | join(', ') }}</small>
+          </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+            <i class="bi bi-send me-1"></i>提交申请
+          </button>
+        </form>
+
+        <div class="mt-3 text-center">
+          <a href="{{ url_for('student.kanban') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-kanban me-1"></i>查看我的申请看板
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('applyForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const courseId = document.getElementById('courseSelect').value;
+  if (!courseId) { showToast('请选择课程', 'warning'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>提交中…';
+
+  const fd = new FormData();
+  fd.append('course_id', courseId);
+
+  fetch('/student/apply', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send me-1"></i>提交申请';
+      if (data.code === 0) {
+        showToast(data.message, 'success');
+        setTimeout(() => window.location.href = '/student/kanban', 1500);
+      } else {
+        showToast(data.message, 'danger');
+      }
+    });
+});
+</script>
+{% endblock %}

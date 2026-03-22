@@ -1,0 +1,359 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card text-center p-5 mb-4">
+            <h3 class="mb-3">开始新的排课任务</h3>
+
+            <div class="border border-2 border-dashed rounded p-5 mb-4 bg-light position-relative" id="dropZone">
+                <input type="file" id="fileInput" class="position-absolute top-0 start-0 w-100 h-100 opacity-0" style="cursor: pointer;" onchange="handleFileSelect(this)">
+                <div id="uploadText">
+                    <i class="bi bi-cloud-upload fs-1 text-primary"></i>
+                    <p class="mb-0 mt-2">点击上传 XML 文件</p>
+                </div>
+                <div id="fileInfo" class="d-none">
+                    <p class="mb-0 fw-bold text-success" id="fileName"></p>
+                </div>
+            </div>
+
+            <!-- Algorithm Configuration Panel -->
+            <div class="accordion mb-4 text-start" id="algoConfigAccordion">
+                <div class="accordion-item border-0 shadow-sm">
+                    <h2 class="accordion-header" id="headingConfig">
+                        <button class="accordion-button collapsed fw-bold text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConfig" aria-expanded="false" aria-controls="collapseConfig">
+                            <i class="bi bi-sliders me-2"></i> 算法高级参数配置 (可选)
+                        </button>
+                    </h2>
+                    <div id="collapseConfig" class="accordion-collapse collapse" aria-labelledby="headingConfig" data-bs-parent="#algoConfigAccordion">
+                        <div class="accordion-body bg-light">
+                            <div class="row g-3">
+                                <div class="col-12 mb-2">
+                                    <label class="form-label small fw-bold text-dark">初始化策略 (Initialization Strategy)</label>
+                                    <select class="form-select form-select-sm" id="initStrategy">
+                                        <option value="greedy" selected>🚀 智能贪婪 (推荐 - 快速收敛)</option>
+                                        <option value="random">🎲 完全随机 (探索 - 避免局部最优)</option>
+                                    </select>
+                                    <div class="form-text text-xs">选择"完全随机"可能会导致初始冲突较多，但有助于探索更多样的解。</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="popSize" class="form-label small fw-bold">种群大小 (Population)</label>
+                                    <input type="number" class="form-control form-control-sm" id="popSize" value="50">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="generations" class="form-label small fw-bold">迭代代数 (Generations)</label>
+                                    <input type="number" class="form-control form-control-sm" id="generations" value="1000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="mutationRate" class="form-label small fw-bold">变异率 (Mutation Rate)</label>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="mutationRate" value="0.2">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="eliteSize" class="form-label small fw-bold">精英保留数 (Elite Size)</label>
+                                    <input type="number" class="form-control form-control-sm" id="eliteSize" value="2">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="actionButtons">
+                <button id="startBtn" class="btn btn-primary btn-lg px-5" disabled onclick="startOptimization()">
+                    <i class="bi bi-cpu"></i> 启动算法
+                </button>
+                <button id="stopBtn" class="btn btn-danger btn-lg px-5 d-none" onclick="stopOptimization()">
+                    <i class="bi bi-stop-circle"></i> 停止
+                </button>
+            </div>
+
+            <!-- Continue Optimization Section -->
+            <div id="continueSection" class="mt-3 d-none animate__animated animate__fadeIn">
+                 <button class="btn btn-outline-primary" onclick="continueOptimization()">
+                    <i class="bi bi-arrow-repeat"></i> 在此基础上继续优化 (100代)
+                </button>
+            </div>
+
+        </div>
+
+        <div id="progressSection" class="d-none">
+
+            <!-- Progress Stats & Bar -->
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">计算进行中...</h5>
+                        <span class="badge bg-primary" id="statusBadge">RUNNING</span>
+                    </div>
+
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+                    </div>
+
+                    <div class="row text-center mt-4">
+                        <div class="col-4">
+                            <small class="text-muted">进化代数</small>
+                            <h4 class="fw-bold" id="genCount">0</h4>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">硬约束冲突</small>
+                            <h4 class="fw-bold text-danger" id="hardCount">-</h4>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">软约束得分</small>
+                            <h4 class="fw-bold text-primary" id="softScore">-</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Evolution Chart -->
+                <div class="col-md-7">
+                    <div class="card h-100">
+                        <div class="card-header border-0 bg-transparent fw-bold">
+                            <i class="bi bi-graph-up me-2"></i>收敛曲线
+                        </div>
+                        <div class="card-body">
+                             <canvas id="evolutionChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Terminal Log -->
+                <div class="col-md-5">
+                    <div class="terminal-window h-100 d-flex flex-column">
+                        <div class="terminal-header">
+                            <div class="terminal-dots me-auto">
+                                <div class="terminal-dot bg-danger"></div>
+                                <div class="terminal-dot bg-warning"></div>
+                                <div class="terminal-dot bg-success"></div>
+                            </div>
+                            <div class="text-white-50 small font-monospace">scheduler_core.exe</div>
+                        </div>
+                        <div class="terminal-body" id="terminalLogs">
+                            <span class="log-line">> System initialized.</span>
+                            <span class="log-line">> Waiting for command...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="successMessage" class="alert alert-success mt-4 d-none text-center shadow-sm">
+            <h4><i class="bi bi-check-circle-fill"></i> 排课完成!</h4>
+            <div class="d-flex justify-content-center gap-2 mt-2">
+                <a href="/schedule" class="btn btn-success">查看结果</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let pollInterval;
+    let evolutionChart;
+    const terminalLogs = document.getElementById('terminalLogs');
+
+    function addLog(msg, type='') {
+        const line = document.createElement('span');
+        line.className = `log-line ${type}`;
+        // Timestamp
+        const now = new Date();
+        const time = now.toTimeString().split(' ')[0];
+        line.innerText = `[${time}] ${msg}`;
+        terminalLogs.appendChild(line);
+        terminalLogs.scrollTop = terminalLogs.scrollHeight;
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('evolutionChart').getContext('2d');
+        if (evolutionChart) {
+            // Keep instance
+        } else {
+            evolutionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '硬约束冲突',
+                            data: [],
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            yAxisID: 'y',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 0
+                        },
+                        {
+                            label: '软约束得分',
+                            data: [],
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            yAxisID: 'y1',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { display: true, grid: { display: false } },
+                        y: {
+                            type: 'linear', display: true, position: 'left',
+                            beginAtZero: true, grid: { borderDash: [5, 5] }
+                        },
+                        y1: {
+                            type: 'linear', display: true, position: 'right',
+                            grid: { drawOnChartArea: false }
+                        },
+                    },
+                    animation: { duration: 0 },
+                    plugins: { legend: { labels: { font: { family: "'Plus Jakarta Sans', sans-serif" } } } }
+                }
+            });
+        }
+    }
+
+    function handleFileSelect(input) {
+        if (input.files[0]) uploadFile(input.files[0]);
+    }
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        document.getElementById('uploadText').innerHTML = '上传中...';
+
+        fetch('/api/upload', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) alert(data.error);
+            else {
+                document.getElementById('uploadText').classList.add('d-none');
+                document.getElementById('fileInfo').classList.remove('d-none');
+                document.getElementById('fileName').innerText = data.filename;
+                document.getElementById('startBtn').disabled = false;
+                addLog(`File uploaded: ${data.filename}`, 'highlight');
+            }
+        });
+    }
+
+    function getParams() {
+        return {
+            init_strategy: document.getElementById('initStrategy').value,
+            population_size: document.getElementById('popSize').value,
+            generations: document.getElementById('generations').value,
+            mutation_rate: document.getElementById('mutationRate').value,
+            elite_size: document.getElementById('eliteSize').value
+        };
+    }
+
+    function startOptimization(isContinue = false) {
+        let params = getParams();
+
+        if (isContinue) {
+            params.continue_optimization = true;
+            params.generations = 100; // Default extension
+            document.getElementById('continueSection').classList.add('d-none');
+            addLog("> Resuming optimization process...", 'highlight');
+        } else {
+            document.getElementById('successMessage').classList.add('d-none');
+            document.getElementById('continueSection').classList.add('d-none');
+            initChart();
+            terminalLogs.innerHTML = ''; // Clear logs
+            addLog("> Initializing Genetic Algorithm Engine...");
+            addLog(`> Parameters: Pop=${params.population_size}, Mutation=${params.mutation_rate}`);
+        }
+
+        document.getElementById('startBtn').classList.add('d-none');
+        document.getElementById('stopBtn').classList.remove('d-none');
+        document.getElementById('fileInput').disabled = true;
+
+        fetch('/api/start_optimization', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    document.getElementById('progressSection').classList.remove('d-none');
+                    addLog("> Engine started. Evolution in progress...");
+                    pollInterval = setInterval(pollProgress, 500);
+                }
+            });
+    }
+
+    function continueOptimization() {
+        startOptimization(true);
+    }
+
+    function stopOptimization() {
+         fetch('/api/stop', { method: 'POST' });
+         addLog("> Stop signal sent by user.", 'warn');
+    }
+
+    let lastGen = 0;
+    function pollProgress() {
+        fetch('/api/progress')
+            .then(res => res.json())
+            .then(data => {
+                const bar = document.getElementById('progressBar');
+                bar.style.width = data.progress_percent + '%';
+                bar.innerText = data.progress_percent + '%';
+
+                document.getElementById('genCount').innerText = data.generation;
+                document.getElementById('hardCount').innerText = data.hard_conflicts;
+                document.getElementById('softScore').innerText = parseFloat(data.soft_score).toFixed(1);
+                document.getElementById('statusBadge').innerText = data.status;
+
+                if (data.hard_conflicts === 0) {
+                    document.getElementById('hardCount').classList.replace('text-danger', 'text-success');
+                }
+
+                // Simulated Logs based on progress
+                if (data.generation > lastGen + 10) {
+                    if (data.hard_conflicts > 0) {
+                        addLog(`Gen ${data.generation}: Conflicts remaining: ${data.hard_conflicts}`);
+                    } else {
+                         addLog(`Gen ${data.generation}: Feasible solution found! Optimizing soft constraints...`, 'highlight');
+                    }
+                    lastGen = data.generation;
+                }
+
+                // Update Chart
+                if (data.history && evolutionChart) {
+                    const gens = data.history.map(h => h.gen);
+                    const hards = data.history.map(h => h.hard);
+                    const softs = data.history.map(h => h.soft);
+
+                    evolutionChart.data.labels = gens;
+                    evolutionChart.data.datasets[0].data = hards;
+                    evolutionChart.data.datasets[1].data = softs;
+                    evolutionChart.update();
+                }
+
+                if (data.status === 'COMPLETED' || data.status === 'STOPPED') {
+                    clearInterval(pollInterval);
+                    document.getElementById('startBtn').classList.remove('d-none');
+                    document.getElementById('stopBtn').classList.add('d-none');
+
+                    if(data.status === 'COMPLETED') {
+                        document.getElementById('successMessage').classList.remove('d-none');
+                        document.getElementById('continueSection').classList.remove('d-none');
+                        addLog("> Optimization successfully completed.", 'highlight');
+                        addLog("> Result saved to memory.", 'highlight');
+                    } else {
+                        addLog("> Process stopped.", 'error');
+                    }
+                }
+            });
+    }
+</script>
+{% endblock %}

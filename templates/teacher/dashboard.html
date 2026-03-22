@@ -1,0 +1,105 @@
+{% extends "role_base.html" %}
+{% block title %}教师首页 - 智能排课系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4><i class="bi bi-house me-2 text-primary"></i>
+    欢迎，{{ current_user.display_name or current_user.username }}
+  </h4>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#0d6efd,#6610f2)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value">{{ schedule_count }}</div>
+          <div class="stat-label">本学期课程</div>
+        </div>
+        <i class="bi bi-book stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#dc3545,#e83e8c)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value">{{ unread }}</div>
+          <div class="stat-label">未读通知</div>
+        </div>
+        <i class="bi bi-bell stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#198754,#20c997)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value">{{ teacher.name if teacher else '-' }}</div>
+          <div class="stat-label">教师姓名</div>
+        </div>
+        <i class="bi bi-person-badge stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#fd7e14,#ffc107)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value">{{ schedule_count * 2 }}</div>
+          <div class="stat-label">本周课时</div>
+        </div>
+        <i class="bi bi-clock stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-bell me-2"></i>最近通知</div>
+      <div class="card-body p-0">
+        {% if recent_notifs %}
+        <ul class="list-group list-group-flush">
+          {% for n in recent_notifs %}
+          <li class="list-group-item px-3 py-3 {% if not n.is_read %}border-start border-primary border-3{% endif %}">
+            <div class="d-flex justify-content-between">
+              <span class="fw-semibold {% if not n.is_read %}text-primary{% endif %}">{{ n.title }}</span>
+              <small class="text-muted">{{ n.created_at.strftime('%m-%d %H:%M') }}</small>
+            </div>
+            <small class="text-muted">{{ n.content[:80] }}{% if n.content|length > 80 %}…{% endif %}</small>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center text-muted py-4">暂无通知</div>
+        {% endif %}
+      </div>
+      <div class="card-footer text-end">
+        <a href="{{ url_for('teacher.notifications_list') }}" class="btn btn-sm btn-outline-primary">
+          查看全部通知 <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-lightning me-2"></i>快捷入口</div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="{{ url_for('teacher.calendar') }}" class="btn btn-outline-primary btn-sm text-start">
+          <i class="bi bi-calendar-week me-2"></i>查看我的课表
+        </a>
+        <a href="{{ url_for('teacher.notifications_list') }}" class="btn btn-outline-warning btn-sm text-start">
+          <i class="bi bi-bell me-2"></i>通知中心
+          {% if unread > 0 %}<span class="badge bg-danger ms-1">{{ unread }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('teacher.profile') }}" class="btn btn-outline-secondary btn-sm text-start">
+          <i class="bi bi-person-circle me-2"></i>个人中心
+        </a>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

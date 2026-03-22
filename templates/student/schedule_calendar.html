@@ -1,0 +1,75 @@
+{% extends "role_base.html" %}
+{% block title %}我的课表 - 智能排课系统{% endblock %}
+
+{% block extra_css %}
+<style>
+.calendar-grid { display: grid; grid-template-columns: 60px repeat(5, 1fr); gap: 4px; }
+.calendar-header { background: #f8f9fa; border-radius: 8px; padding: 8px; text-align: center; font-weight: 600; font-size: 0.9rem; }
+.calendar-section-label { background: #f8f9fa; border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.8rem; color: #6c757d; display: flex; align-items: center; justify-content: center; }
+.calendar-cell { min-height: 72px; border-radius: 8px; background: #f8f9fa; border: 1px solid #e9ecef; }
+.calendar-cell.has-course { cursor: default; }
+.course-block { height: 100%; border-radius: 8px; padding: 6px 8px; color: #fff; font-size: 0.8rem; }
+.course-block .course-name { font-weight: 600; line-height: 1.2; }
+.course-block .course-meta { opacity: 0.85; font-size: 0.72rem; margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <h4><i class="bi bi-calendar-week me-2 text-primary"></i>我的课表</h4>
+  <a href="{{ url_for('student.apply') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus me-1"></i>申请选课
+  </a>
+</div>
+
+{% set total_courses = namespace(count=0) %}
+{% for day in days_order %}
+  {% for sec in sections %}
+    {% if calendar_data.get(day, {}).get(sec) %}
+      {% set total_courses.count = total_courses.count + calendar_data[day][sec]|length %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
+{% if total_courses.count == 0 %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle me-2"></i>
+  您还没有已通过的选课申请。
+  <a href="{{ url_for('student.apply') }}" class="alert-link">去申请选课</a>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="calendar-grid">
+      <div class="calendar-header"></div>
+      {% for day in days_order %}
+      <div class="calendar-header">{{ day }}</div>
+      {% endfor %}
+
+      {% for sec in sections %}
+      <div class="calendar-section-label">第{{ sec }}节</div>
+      {% for day in days_order %}
+      {% set courses_in_cell = calendar_data.get(day, {}).get(sec, []) %}
+      <div class="calendar-cell {% if courses_in_cell %}has-course{% endif %}">
+        {% for c in courses_in_cell %}
+        {% set colors = ['#0d6efd','#198754','#dc3545','#fd7e14','#6610f2','#20c997'] %}
+        {% set color = colors[loop.index0 % colors|length] %}
+        <div class="course-block" style="background:{{ color }}">
+          <div class="course-name">{{ c.course_name[:10] }}</div>
+          <div class="course-meta">
+            <i class="bi bi-person me-1"></i>{{ c.teacher[:8] }}<br>
+            <i class="bi bi-building me-1"></i>{{ c.room }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}{% endblock %}

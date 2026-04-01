@@ -1,0 +1,151 @@
+:root {
+  --primary: #5e72e4;
+  --primary-dark: #825ee4;
+  --navbar-height: 60px;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Microsoft YaHei', system-ui, sans-serif;
+  color: #2d3748;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #f0f2f5;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(at 40% 20%, rgba(94,114,228,.18) 0, transparent 50%),
+    radial-gradient(at 80%  0%, rgba(45,206,137,.15) 0, transparent 50%),
+    radial-gradient(at  0% 50%, rgba(251,99,64,.13)  0, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(17,205,239,.13) 0, transparent 50%),
+    radial-gradient(at  0%100%, rgba(94,114,228,.15) 0, transparent 50%),
+    radial-gradient(at 80%100%, rgba(251,99,64,.13)  0, transparent 50%),
+    #f0f2f5;
+}
+
+.glass-nav {
+  height: var(--navbar-height);
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.06);
+}
+.glass-nav .navbar-brand { font-weight: 800; color: #344767 !important; letter-spacing: 0.02em; }
+.glass-nav .nav-link { color: #67748e !important; font-weight: 600; border-radius: 8px; padding: 0.4rem 0.75rem; transition: all .2s; }
+.glass-nav .nav-link:hover, .glass-nav .nav-link.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(94,114,228,.35);
+}
+.glass-nav .dropdown-menu { border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.12); backdrop-filter: blur(10px); background: rgba(255,255,255,.95); }
+.glass-nav .dropdown-item { border-radius: 8px; margin: 2px 6px; width: calc(100% - 12px); font-weight: 500; color: #344767; }
+.glass-nav .dropdown-item:hover { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: #fff; }
+
+.brand-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+
+.card {
+  border: 1px solid rgba(255,255,255,0.65);
+  border-radius: 1.25rem;
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(31,38,135,.07);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(31,38,135,.13); }
+.card-header { background: transparent; border-bottom: 1px solid rgba(0,0,0,.05); font-weight: 600; border-radius: 1.25rem 1.25rem 0 0 !important; }
+
+.stat-card {
+  border-radius: 1.25rem; color: #fff; padding: 1.25rem 1.5rem;
+  border: none; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  position: relative; overflow: hidden;
+}
+.stat-card::after {
+  content: ''; position: absolute; top: -40%; right: -30%;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(255,255,255,.25) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.stat-card .stat-icon { font-size: 2.2rem; opacity: .8; }
+.stat-card .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+.stat-card .stat-label { font-size: .85rem; opacity: .85; margin-top: .25rem; }
+
+.bg-gradient-primary { background: linear-gradient(310deg, #5e72e4 0%, #825ee4 100%); }
+.bg-gradient-success { background: linear-gradient(310deg, #2dce89 0%, #2dcecc 100%); }
+.bg-gradient-info    { background: linear-gradient(310deg, #11cdef 0%, #1171ef 100%); }
+.bg-gradient-warning { background: linear-gradient(310deg, #fb6340 0%, #fbb140 100%); }
+.bg-gradient-danger  { background: linear-gradient(310deg, #f5365c 0%, #f56036 100%); }
+
+.main-content { padding: 1.75rem; min-height: calc(100vh - var(--navbar-height)); }
+.page-header { margin-bottom: 1.5rem; }
+.page-header h4 { font-weight: 800; margin: 0; color: #344767; }
+
+.table th { font-weight: 700; font-size: .8rem; color: #8392ab; text-transform: uppercase; letter-spacing: .05em; }
+
+.badge-role-admin   { background: linear-gradient(135deg,#f5365c,#f56036); }
+.badge-role-teacher { background: linear-gradient(135deg,#2dce89,#2dcecc); }
+.badge-role-student { background: linear-gradient(135deg,#5e72e4,#825ee4); }
+
+.avatar-circle    { width: 36px;  height: 36px;  border-radius: 50%; object-fit: cover; }
+.avatar-circle-lg { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
+
+.btn-primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border: none; box-shadow: 0 4px 10px rgba(94,114,228,.35); }
+.btn-primary:hover { opacity: .9; box-shadow: 0 6px 16px rgba(94,114,228,.45); }
+.btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+
+#toast-container { z-index: 9999; }
+.toast { min-width: 280px; border-radius: 12px; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.04); }
+::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+.chart-container { position: relative; }
+
+/* 日历课表 */
+.calendar-grid { display: grid; grid-template-columns: 60px repeat(5, 1fr); gap: 4px; }
+.calendar-header { background: #f8f9fa; border-radius: 8px; padding: 8px; text-align: center; font-weight: 600; font-size: 0.9rem; }
+.calendar-section-label { background: #f8f9fa; border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.8rem; color: #6c757d; display: flex; align-items: center; justify-content: center; }
+.calendar-cell { min-height: 72px; border-radius: 8px; background: #f8f9fa; border: 1px solid #e9ecef; }
+.calendar-cell.has-course { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.calendar-cell.has-course:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.course-block { height: 100%; border-radius: 8px; padding: 6px 8px; color: #fff; font-size: 0.8rem; }
+.course-block .course-name { font-weight: 600; line-height: 1.2; }
+.course-block .course-meta { opacity: 0.85; font-size: 0.72rem; margin-top: 2px; }
+
+/* 看板 */
+.kanban-col { min-height: 300px; }
+.kanban-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.kanban-header { font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1rem; border-radius: 10px 10px 0 0; }
+
+/* 上传区 */
+#dropZone { border: 2px dashed #cbd5e0; border-radius: 12px; background: rgba(248,249,250,.6); transition: all .25s; cursor: pointer; }
+#dropZone:hover, #dropZone.drag-over { border-color: #5e72e4; background: rgba(94,114,228,.06); }
+
+/* 课程卡片 */
+.course-card { transition: opacity .15s; }
+
+/* 通知圆点 */
+.notification-dot { width: 8px; height: 8px; border-radius: 50%; background: #f5365c; display: inline-block; flex-shrink: 0; }
+
+/* 密码强度条 */
+.strength-bar { height: 6px; border-radius: 3px; transition: all 0.3s; }
+
+@media (max-width: 768px) {
+  .main-content { padding: 1rem; }
+  .calendar-grid { display: none; }
+  .mobile-list { display: block; }
+}
+@media (min-width: 769px) { .mobile-list { display: none; } }
